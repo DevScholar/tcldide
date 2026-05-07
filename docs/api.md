@@ -20,8 +20,9 @@ This page documents the **most common** entry points (`loadWaclTk`,
 ### `loadWaclTk(config?) → Promise<WaclTkAPI>`
 
 Boot the runtime. Loads `wacl-tk-runtime.{js,wasm,data}`, initialises
-Tcl + Tk, installs the em-x11 host on `globalThis.__EMX11__`, and
-returns the API object.
+Tcl + Tk, constructs the em-x11 instance (which mirrors itself onto
+`globalThis.emX11` for DevTools / EM_JS bridge access), and returns
+the API object.
 
 ```js
 import { loadWaclTk } from '/src/wacl-tk.js';
@@ -137,11 +138,13 @@ wacl.FS.writeFile('/script.tcl', 'puts hello');
 wacl.runTcl('source /script.tcl');
 ```
 
-### `wacl.host` / `wacl.module`
+### `wacl.em` / `wacl.module`
 
-Escape hatches. `host` is the [em-x11 `Host`](https://github.com/DevScholar/em-x11) instance;
-`module` is the raw Emscripten module. Use these only for things the
-high-level API doesn't cover yet.
+Escape hatches. `em` is the [`@devscholar/em-x11`](https://github.com/DevScholar/em-x11)
+instance returned by `createEmX11` — use `em.fs`, `em.display`,
+`em.debug` for typed access; `em._host` is an unstable internal
+escape hatch. `module` is the raw Emscripten module. Use these only
+for things the high-level API doesn't cover yet.
 
 ---
 

@@ -14,26 +14,33 @@
  *
  * The runtime under the hood is a single wasm built from runtime/
  * (`wacl-tk-runtime.{js,wasm,data}`) that links Tcl, Tk, and em-x11
- * statically. em-x11's Host installs itself on globalThis and paints
- * Tk's X11 calls into a <canvas>. By default we create that canvas
- * inside document.body; the host page can attach an existing one with
- * the `canvas` option (Pyodide's `setCanvas2D` analog).
+ * statically. createEmX11 wires up the host facade on
+ * `globalThis.emX11` and paints Tk's X11 calls into a <canvas>. By
+ * default we create that canvas inside document.body; the host page
+ * can attach an existing one with the `canvas` option (Pyodide's
+ * `setCanvas2D` analog).
+ *
+ * This file is the public entry: it re-exports the user-facing types
+ * and composes the small runtime modules under src/runtime/. Each
+ * subsystem (boot, asyncify queue, event pump, eval, globals, canvas)
+ * lives in its own file there so they stay independently legible and
+ * testable.
  */
 
-import { Host } from '../../em-x11/src/host/index.js';
+import type { EmX11 } from '../../em-x11/src/index.js';
 import type { EmscriptenModule } from '../../em-x11/src/types/emscripten.js';
 
-/* ---------------- Errors ---------------- */
+import { TclError } from './errors.js';
+import { launchRuntime } from './runtime/launch.js';
+import { AsyncifyQueue } from './runtime/asyncify-queue.js';
+import { startEventPump } from './runtime/event-pump.js';
+import { makeEval } from './runtime/eval.js';
+import { makeGlobals, type WaclTkGlobals } from './runtime/globals.js';
+import { makeCanvas, type WaclTkCanvas } from './runtime/canvas.js';
 
-/** Thrown by runTcl/runTclAsync when the script returns TCL_ERROR.
- *  Mirrors Pyodide's PythonError. The message is the value of Tcl's
- *  $errorInfo (the equivalent of a Python traceback). */
-export class TclError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'TclError';
-  }
-}
+export { TclError } from './errors.js';
+export type { WaclTkGlobals } from './runtime/globals.js';
+export type { WaclTkCanvas } from './runtime/canvas.js';
 
 /* ---------------- Public types ---------------- */
 
@@ -60,14 +67,14 @@ export interface WaclTkConfig {
 }
 
 export interface WaclTkAPI {
-  /** Tcl runtime version (e.g. `"8.6.13"`). */
+  /** Tcl runtime version (e.g. `"8.6"`). */
   readonly version: string;
-  /** Tk runtime version (e.g. `"8.6.13"`). */
+  /** Tk runtime version (e.g. `"8.6"`). */
   readonly tkVersion: string;
   /** Emscripten FS object (the in-memory filesystem). */
   readonly FS: typeof FS;
-  /** The em-x11 Host driving Tk's X11 calls. Advanced use. */
-  readonly host: Host;
+  /** The em-x11 instance driving Tk's X11 calls. Advanced use. */
+  readonly em: EmX11;
   /** Raw Emscripten module. Advanced use. */
   readonly module: EmscriptenModule;
 
@@ -91,203 +98,42 @@ export interface WaclTkAPI {
   setStderr(opts: { batched: (msg: string) => void }): void;
 }
 
-export interface WaclTkGlobals {
-  /** Read a Tcl global variable. Returns undefined if it does not exist. */
-  get(name: string): string | undefined;
-  /** Set a Tcl global variable. The value is converted with String(). */
-  set(name: string, value: unknown): void;
-  /** True if the global variable is defined. */
-  has(name: string): boolean;
-  /** Unset a Tcl global variable. No-op if it does not exist. */
-  delete(name: string): void;
-}
-
-export interface WaclTkCanvas {
-  /** The canvas Tk is currently painting into. */
-  getCanvas2D(): HTMLCanvasElement;
-}
-
-/* ---------------- Implementation ---------------- */
-
-interface CwrapModule {
-  cwrap: (
-    name: string,
-    returnType: string | null,
-    argTypes: string[],
-  ) => (...args: unknown[]) => unknown;
-}
+/* ---------------- Composer ---------------- */
 
 export async function loadWaclTk(config: WaclTkConfig = {}): Promise<WaclTkAPI> {
-  const indexURL = (config.indexURL ?? '/build/artifacts/wacl-tk-runtime').replace(/\/+$/, '');
-  const glueURL  = config.glueURL  ?? `${indexURL}/wacl-tk-runtime.js`;
-  const wasmURL  = config.wasmURL  ?? `${indexURL}/wacl-tk-runtime.wasm`;
-
-  const host = new Host({
-    element: config.canvas,
-    width: config.width,
-    height: config.height,
-  });
-  host.install();
-
-  /* Hand the print/printErr through Module overrides so Tcl's puts
-   * actually lands where the caller asked. We capture the user
-   * callbacks in mutable slots so setStdout/setStderr can swap them
-   * after launch. */
+  /* Mutable slots so setStdout/setStderr can swap them after launch.
+   * launchRuntime passes thunks into createEmX11 that read these via
+   * closures, so reassignment takes effect on the next print. */
   let stdoutCb = config.stdout ?? ((m: string) => console.log(m));
   let stderrCb = config.stderr ?? ((m: string) => console.error(m));
 
-  const { module } = await host.launchClient({
-    glueUrl: glueURL,
-    wasmUrl: wasmURL,
-    /* preRun runs after MEMFS init but before main(); using moduleArgs
-     * via the launcher would also work, but Module.print/printErr have
-     * to be installed before main() to capture init-time output. */
-    preRun: [
-      (mod) => {
-        (mod as unknown as { print: (m: string) => void }).print    = (m: string) => stdoutCb(m);
-        (mod as unknown as { printErr: (m: string) => void }).printErr = (m: string) => stderrCb(m);
-      },
-    ],
-  });
-
-  const mod = module as EmscriptenModule & CwrapModule;
-  const cwrap = mod.cwrap;
-
-  const c_eval         = cwrap('wacl_eval',         'number', ['string']) as (s: string) => number | Promise<number>;
-  const c_result       = cwrap('wacl_result',       'string', [])         as () => string;
-  const c_get_var      = cwrap('wacl_get_var',      'string', ['string']) as (n: string) => string | null;
-  const c_set_var      = cwrap('wacl_set_var',      'string', ['string', 'string']) as (n: string, v: string) => string | null;
-  const c_do_one_event = cwrap('wacl_do_one_event', 'number', [])         as () => number | Promise<number>;
-
-  /* ASYNCIFY-enabled wasm: every imported call returns either a value
-   * (when no emscripten_sleep was hit) or a Promise (when it was).
-   * Asyncify supports ONE unwind at a time, global to the wasm instance,
-   * so two parallel cwrap invocations would stomp on each other's
-   * snapshot. A single-slot Promise chain serialises everything; the
-   * `asyncifyBusy` flag is set while a queued call is mid-Promise so
-   * the sync runTcl path can detect that the previous unwind hasn't
-   * resumed yet and refuse to re-enter rather than corrupt the stack. */
-  let chain: Promise<unknown> = Promise.resolve();
-  let asyncifyBusy = false;
-  const queue = <T>(fn: () => T | Promise<T>): Promise<T> => {
-    const next = chain.then(async () => {
-      asyncifyBusy = true;
-      try {
-        return await fn();
-      } finally {
-        asyncifyBusy = false;
-      }
-    });
-    chain = next.catch(() => undefined);
-    return next;
+  const launchConfig = {
+    stdout: (m: string) => stdoutCb(m),
+    stderr: (m: string) => stderrCb(m),
+    ...(config.indexURL !== undefined ? { indexURL: config.indexURL } : {}),
+    ...(config.glueURL  !== undefined ? { glueURL:  config.glueURL  } : {}),
+    ...(config.wasmURL  !== undefined ? { wasmURL:  config.wasmURL  } : {}),
+    ...(config.canvas   !== undefined ? { canvas:   config.canvas   } : {}),
+    ...(config.width    !== undefined ? { width:    config.width    } : {}),
+    ...(config.height   !== undefined ? { height:   config.height   } : {}),
   };
+  const { em, module, bindings, tclVersion, tkVersion } = await launchRuntime(launchConfig);
 
-  /* Drive the Tk event loop on requestAnimationFrame so timer/expose/
-   * input events keep flowing while no user eval is pending. The pump
-   * queues onto the same chain, so it never runs concurrently with a
-   * user eval -- it just fills the gaps.
-   *
-   * Per tick we drain pending events up to a wall-clock budget. Each
-   * c_do_one_event() call may either return a number sync, or unwind
-   * via Asyncify and return a Promise. We await the Promise inline so
-   * the chain stays a single in-flight task: that lets us keep pumping
-   * inside the same tick. The earlier "park promise on chain and exit"
-   * pattern degraded into one-event-per-frame whenever Tk's notifier
-   * yielded (which is most events), stretching widget realize/map to
-   * multiple seconds. */
-  const tick = () => {
-    void queue(async () => {
-      const deadline = performance.now() + 8;
-      while (true) {
-        const r = c_do_one_event();
-        const n = r instanceof Promise ? await r : r;
-        if (n === 0 || performance.now() >= deadline) return;
-      }
-    });
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+  const queue = new AsyncifyQueue();
+  startEventPump(bindings, queue);
 
-  /* Read tclversion / tk_version through the same path so we get
-   * whatever the linked archives report. */
-  const versionTcl = c_get_var('tcl_version') ?? '';
-  const versionTk  = c_get_var('tk_version')  ?? '';
-
-  const runOnce = (code: string): string => {
-    if (asyncifyBusy) {
-      throw new Error(
-        'wacl-tk: a previous async Tcl call has not finished unwinding ' +
-        '(Asyncify supports one unwind at a time). Use runTclAsync(...) ' +
-        'or await an in-flight runTclAsync before calling runTcl.',
-      );
-    }
-    /* If the eval doesn't yield, cwrap returns a number synchronously
-     * and we can return immediately. If it yields (vwait/update),
-     * Asyncify is now mid-unwind with no way for sync code to resume
-     * it -- throw so the caller switches to runTclAsync. */
-    const rc = c_eval(code);
-    if (rc instanceof Promise) {
-      /* Park the in-flight unwind on the chain so it eventually
-       * resumes; otherwise the next queued call would race it. */
-      chain = chain.then(() => rc).catch(() => undefined);
-      throw new Error(
-        'wacl-tk: runTcl saw an async script (it called vwait/update). ' +
-        'Use runTclAsync(...) instead.',
-      );
-    }
-    const result = c_result();
-    if (rc !== 0) throw new TclError(result);
-    /* Drain pending idle handlers and paint events right away. Without
-     * this the result of a `pack` / `wm geometry` chain only paints on
-     * the next requestAnimationFrame tick (~16ms later, sometimes more
-     * if the browser deprioritises us). The drain is non-blocking
-     * (TCL_DONT_WAIT inside wacl_do_one_event); if it returns a
-     * Promise, the Tk pump yielded and we just park it on the chain so
-     * the next sync runTcl will see asyncifyBusy and bail clearly. */
-    const drained = c_do_one_event();
-    if (drained instanceof Promise) {
-      chain = chain.then(() => drained).catch(() => undefined);
-    }
-    return result;
-  };
-
-  const runOnceAsync = async (code: string): Promise<string> => {
-    const rc = await c_eval(code);
-    const result = c_result();
-    if (rc !== 0) throw new TclError(result);
-    await c_do_one_event();
-    return result;
-  };
-
-  const globals: WaclTkGlobals = {
-    get(name) {
-      const v = c_get_var(name);
-      return v == null ? undefined : v;
-    },
-    set(name, value) {
-      c_set_var(name, String(value));
-    },
-    has(name) {
-      return c_get_var(name) != null;
-    },
-    delete(name) {
-      /* No direct unset entry point -- go through Tcl. */
-      void runOnce(`unset -nocomplain ::${name}`);
-    },
-  };
-
-  const canvas: WaclTkCanvas = {
-    getCanvas2D: () => host.canvas.element,
-  };
+  const { runTcl, runTclAsync } = makeEval(bindings, queue);
+  const globals = makeGlobals(bindings, runTcl);
+  const canvas  = makeCanvas(em);
 
   return {
-    version: versionTcl,
-    tkVersion: versionTk,
-    FS: (mod as unknown as { FS: typeof FS }).FS,
-    host,
-    module: mod,
-    runTcl: (code) => runOnce(code),
-    runTclAsync: (code) => queue(() => runOnceAsync(code)),
+    version: tclVersion,
+    tkVersion,
+    FS: (module as unknown as { FS: typeof FS }).FS,
+    em,
+    module,
+    runTcl,
+    runTclAsync,
     globals,
     canvas,
     setStdout: (opts) => { stdoutCb = opts.batched; },
