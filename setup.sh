@@ -27,7 +27,8 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Tcl source tree (make waclprep also downloads tDOM / rl_json / tcllib)
+# Tcl source tree (downloaded fresh, no source patch -- wasm tweaks are
+# all in configure flags; see Makefile config target)
 # ---------------------------------------------------------------------------
 if [ -d tcl/unix ]; then
     echo "tcl/ already present — skipping waclprep."

@@ -23,6 +23,8 @@
 #include <string.h>
 #include <emscripten.h>
 
+extern int Wacl_Init(Tcl_Interp *interp);
+
 #define MAX_FILE_HANDLERS 8
 typedef struct {
     int fd;
@@ -193,6 +195,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "wacl-tk-runtime: Tcl_Init failed: %s\n",
                 Tcl_GetStringResult(g_interp));
         return 1;
+    }
+
+    /* Register ::wacl::dom and ::wacl::jscall (opt/wacl.c). Failures
+     * here are non-fatal -- a runtime without the JS bridge can still
+     * eval pure-Tcl/Tk code. */
+    if (Wacl_Init(g_interp) != TCL_OK) {
+        fprintf(stderr, "wacl-tk-runtime: Wacl_Init failed: %s\n",
+                Tcl_GetStringResult(g_interp));
     }
 
     /* Belt-and-braces: source auto.tcl so tcl_findLibrary is loaded

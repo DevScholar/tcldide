@@ -48,10 +48,10 @@ DomCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 
 	// TODO: always catch errors
 	int numChanged = EM_ASM_INT({
-		var action   = Pointer_stringify($0);
-		    selector = Pointer_stringify($1);
-		    key      = Pointer_stringify($2);
-		    val      = Pointer_stringify($3);
+		var action   = UTF8ToString($0);
+		    selector = UTF8ToString($1);
+		    key      = UTF8ToString($2);
+		    val      = UTF8ToString($3);
 		var elts = document.querySelectorAll(selector);
 		for (var i = 0; i < elts.length; i++) {
 			if (action === "attr") {

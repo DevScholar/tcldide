@@ -33,7 +33,10 @@ if(NOT EXISTS "${EMX11_ARCHIVE}")
     return()
 endif()
 
-add_executable(wacl-tk-runtime wacl-tk-runtime.c)
+add_executable(wacl-tk-runtime
+    wacl-tk-runtime.c
+    "${CMAKE_SOURCE_DIR}/opt/wacl.c"
+)
 
 target_include_directories(wacl-tk-runtime PRIVATE
     "${WACL_TK_DIR}/include"

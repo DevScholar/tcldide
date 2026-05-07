@@ -7,12 +7,11 @@
 # libemx11.a.
 #
 # Live targets (per setup.sh):
-#   waclprep    download + patch Tcl source
+#   waclprep    download Tcl source (no source patch)
 #   tkprep      download Tk source
 #   config      configure Tcl
 #   waclinstall build + install libtcl
 #   tkinstall   build + install libtk (depends on em-x11 headers)
-#   patch       regenerate wacl.patch from a clean Tcl checkout (maintainer)
 #   clean / distclean
 #
 # Tcl/Tk version pins -- bump together; em-x11's X11/*.h is matched to 8.6.
@@ -31,25 +30,46 @@ EMX11_LIBDIR=$(EMX11_DIR)/build/artifacts
 # Optimisation injected into the Tcl/Tk Makefiles after configure runs.
 BCFLAGS?=-Oz -s WASM=1
 
-.PHONY: waclprep config waclinstall tkprep tkconfig libtk tkinstall tkclean patch clean distclean reset
+.PHONY: waclprep config waclinstall tkprep tkconfig libtk tkinstall tkclean clean distclean reset
 
+# Stock Tcl 8.6 source. No `patch` step: every wasm-specific tweak lives
+# in configure flags below (see config target). The wacl-specific Tcl
+# commands (`::wacl::dom`, `::wacl::jscall`) are compiled into the runtime
+# executable from opt/wacl.c, not into libtcl, so Tcl can stay pristine.
 waclprep:
 	wget -nc http://prdownloads.sourceforge.net/tcl/tcl-core$(TCLVERSION)-src.tar.gz
 	mkdir -p tcl
 	tar -C tcl --strip-components=1 -xf tcl-core$(TCLVERSION)-src.tar.gz
-	cd tcl && patch --verbose -p1 < ../wacl.patch
 	cd tcl/unix && autoconf
 
 config:
 	mkdir -p $(INSTALLDIR)
-	cd tcl/unix && emconfigure ./configure --prefix=$(CURDIR)/$(INSTALLDIR) \
-		--disable-threads --disable-load --disable-shared
+	# --host=wasm32-unknown-emscripten triggers autoconf's cross-compile
+	# path so the runtime probes (strstr / strtoul / strtod broken-func
+	# checks) are skipped instead of executed natively. Without this Tcl's
+	# configure tries to AC_TRY_RUN them and fails under emconfigure.
+	#
+	# ac_cv_have_intrinsic_cpuid=no preempts tclUnixCompat.c's GNU/x86
+	# cpuid feature detection -- there is no cpuid intrinsic on wasm32.
+	cd tcl/unix && emconfigure ./configure \
+		--host=wasm32-unknown-emscripten \
+		--prefix=$(CURDIR)/$(INSTALLDIR) \
+		--disable-threads --disable-load --disable-shared \
+		ac_cv_have_intrinsic_cpuid=no
 	cd tcl/unix && sed -i 's/-O2//g' Makefile
 	cd tcl/unix && sed -i 's/^\(CFLAGS\t.*\)/\1 $(BCFLAGS)/g' Makefile
 
+# Build only the static archives, never tclsh -- tclsh is a native exe
+# entry point that has no place in a browser build, and the install-binaries
+# target would also try to install it. Manual cp instead of `make install`.
 waclinstall:
-	cd tcl/unix && emmake make -j
-	cd tcl/unix && make install
+	cd tcl/unix && emmake make -j libtcl8.6.a libtclstub8.6.a
+	mkdir -p $(INSTALLDIR)/lib $(INSTALLDIR)/include
+	cp tcl/unix/libtcl8.6.a tcl/unix/libtclstub8.6.a $(INSTALLDIR)/lib/
+	cp tcl/unix/tclConfig.sh tcl/unix/tclooConfig.sh $(INSTALLDIR)/lib/ 2>/dev/null || true
+	cp tcl/generic/tcl.h tcl/generic/tclDecls.h tcl/generic/tclPlatDecls.h \
+		tcl/generic/tclTomMath.h tcl/generic/tclTomMathDecls.h \
+		$(INSTALLDIR)/include/
 
 # ---- Tk ---------------------------------------------------------------
 # Stock Tk 8.6 against em-x11's Xlib. Tk's internal xlib/*.c is only used
@@ -107,16 +127,6 @@ tkinstall: libtk
 tkclean:
 	if [ -e tk/unix/Makefile ] ; then cd tk/unix && make distclean ; fi
 	rm -f $(INSTALLDIR)/lib/libtk8.6.a $(INSTALLDIR)/lib/tkConfig.sh
-
-# Maintainer escape hatch: regenerate wacl.patch by diffing a fresh Tcl
-# source against the patched ./tcl/ tree. Only needed when bumping
-# TCLVERSION or upstreaming a fix.
-patch:
-	wget -nc http://prdownloads.sourceforge.net/tcl/tcl-core$(TCLVERSION)-src.tar.gz
-	tar -xzf tcl-core$(TCLVERSION)-src.tar.gz
-	rm -rf tcl/unix/{autom4te.cache,configure} tcl$(TCLVERSION)/unix/configure
-	echo `diff -ruN tcl$(TCLVERSION) tcl > wacl.patch`
-	rm -rf tcl$(TCLVERSION)
 
 clean:
 	rm -rf $(INSTALLDIR)
