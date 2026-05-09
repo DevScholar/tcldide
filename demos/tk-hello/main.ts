@@ -15,12 +15,22 @@ wacl.runTcl(`
   pack  .sep  -fill x -padx 8 -pady 2
 
   frame .row1
-  label  .row1.l -text {Name:} -width 8 -anchor e
-  entry  .row1.e -textvariable ::name -width 18
+  label  .row1.l -text {Names:} -width 8 -anchor ne
+  text   .row1.e -width 24 -height 4
   button .row1.b -text {Greet} -command {
-      set m "Hello, [expr {$::name eq {} ? {World} : $::name}]!"
-      .out configure -text $m
+      set raw [string trim [.row1.e get 1.0 end]]
+      if {$raw eq {}} {
+          .out configure -text {Hello, World!}
+      } else {
+          set names {}
+          foreach line [split $raw "\n"] {
+              set line [string trim $line]
+              if {$line ne {}} { lappend names $line }
+          }
+          .out configure -text "Hello, [join $names {, }]!"
+      }
   }
+  .row1.e insert end "One\nTwo\nThree"
   pack .row1.l .row1.e .row1.b -side left -padx 4 -pady 6
   pack .row1
 
@@ -33,10 +43,9 @@ wacl.runTcl(`
   pack .row2.cl .row2.cv .row2.inc .row2.dec .row2.rst -side left -padx 4 -pady 6
   pack .row2
 
-  label .out -text {(press Greet)} -relief groove -bd 2 -padx 8 -pady 4 -width 32
+  label .out -text {(press Greet)} -relief groove -bd 2 -padx 8 -pady 4 -width 32 -wraplength 240 -justify left
   pack  .out -padx 12 -pady 8
 
-  set ::name {}
   set ::clicks 0
 `);
 
