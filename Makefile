@@ -15,8 +15,8 @@
 #   clean / distclean
 #
 # Tcl/Tk version pins -- bump together; em-x11's X11/*.h is matched to 8.6.
-TCLVERSION?=8.6.6
-TKVERSION?=8.6.6
+TCLVERSION?=8.6.15
+TKVERSION?=8.6.15
 
 INSTALLDIR=jsbuild
 EMSCRIPTEN?=$(HOME)/.local/lib/emsdk/upstream/emscripten
@@ -51,11 +51,20 @@ config:
 	#
 	# ac_cv_have_intrinsic_cpuid=no preempts tclUnixCompat.c's GNU/x86
 	# cpuid feature detection -- there is no cpuid intrinsic on wasm32.
+	# ac_cv_func_strtoul=yes: Tcl 8.6.15 added compat/strtoul.c, but emscripten
+	# libc already exports strtoul. Without this override Tcl bundles its own
+	# copy and wasm-ld errors with "duplicate symbol: strtoul" at runtime link.
+	# tcl_cv_str*_unbroken=ok: cross-compile path defaults these to "unknown"
+	# which Tcl treats as broken and pulls in compat/str{toul,str}.c. Same
+	# duplicate-symbol fallout, so force them to "ok".
 	cd tcl/unix && emconfigure ./configure \
 		--host=wasm32-unknown-emscripten \
 		--prefix=$(CURDIR)/$(INSTALLDIR) \
 		--disable-threads --disable-load --disable-shared \
-		ac_cv_have_intrinsic_cpuid=no
+		ac_cv_have_intrinsic_cpuid=no \
+		ac_cv_func_strtoul=yes \
+		tcl_cv_strtoul_unbroken=ok \
+		tcl_cv_strstr_unbroken=ok
 	cd tcl/unix && sed -i 's/-O2//g' Makefile
 	cd tcl/unix && sed -i 's/^\(CFLAGS\t.*\)/\1 $(BCFLAGS)/g' Makefile
 
@@ -106,7 +115,7 @@ tkconfig:
 	# config target) and make sure em-x11 headers win over anything the
 	# configure probe stuck into X11_INCLUDES.
 	cd tk/unix && sed -i 's/-O2//g' Makefile
-	cd tk/unix && sed -i 's|^\(CFLAGS[[:space:]].*\)|\1 $(BCFLAGS)|g' Makefile
+	cd tk/unix && sed -i 's|^\(CFLAGS[[:space:]].*\)|\1 $(BCFLAGS) -DTK_USE_INPUT_METHODS=1|g' Makefile
 	cd tk/unix && sed -i 's|^X11_INCLUDES[[:space:]]*=.*|X11_INCLUDES = -I$(EMX11_INCLUDES)|' Makefile
 
 libtk: tkconfig

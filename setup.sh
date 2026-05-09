@@ -6,8 +6,8 @@
 # then prints the full build sequence so you can continue manually.
 set -euo pipefail
 
-TCLVERSION=${TCLVERSION:-8.6.6}
-TKVERSION=${TKVERSION:-8.6.6}
+TCLVERSION=${TCLVERSION:-8.6.15}
+TKVERSION=${TKVERSION:-8.6.15}
 
 # ---------------------------------------------------------------------------
 # Prerequisite check
