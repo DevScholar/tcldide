@@ -48,3 +48,5 @@ wacl.runTcl(`
 `);
 
 console.log(`tk-entry: Tcl ${wacl.version} / Tk ${wacl.tkVersion} ready`);
+
+(window as any).wacl = wacl;

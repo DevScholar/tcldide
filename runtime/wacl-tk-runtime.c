@@ -107,22 +107,64 @@ static void install_browser_notifier(void) {
 
 /* --------------------------------------------------------------------- */
 
-static Tcl_Interp *g_interp   = NULL;
-static char       *g_result   = NULL;   /* malloc'd; result of last eval/get */
+static Tcl_Interp *g_interp     = NULL;
+static char       *g_result     = NULL;  /* malloc'd; raw UTF-8 for JS */
+static char       *g_var_result = NULL;  /* malloc'd; raw UTF-8 for JS (get/set) */
+static Tcl_Encoding g_utf8_enc  = NULL;
+
+/* Tk 8.6 (TCL_UTF_MAX=3) stores emoji internally as CESU-8 surrogate
+ * pairs (6 bytes/emoji). Stock `wish file.tcl` gets there because the
+ * file channel runs source bytes through the "utf-8" encoding, whose
+ * UtfToUtfProc normalises native 4-byte UTF-8 to CESU-8. Our JS bridge
+ * hands `Tcl_Eval` a raw UTF-8 buffer from `stringToUTF8`, skipping
+ * that normalisation -- entry/text DeleteChars then assumes 3-byte
+ * surrogate-half stride and corrupts the heap on any emoji edit.
+ * Convert at the boundary in both directions to match stock semantics. */
+static void ensure_utf8_enc(void) {
+    if (!g_utf8_enc) g_utf8_enc = Tcl_GetEncoding(NULL, "utf-8");
+}
+
+static const char *to_cesu8(const char *src, Tcl_DString *ds) {
+    Tcl_DStringInit(ds);
+    ensure_utf8_enc();
+    if (!g_utf8_enc || !src) {
+        if (src) Tcl_DStringAppend(ds, src, -1);
+        return Tcl_DStringValue(ds);
+    }
+    Tcl_ExternalToUtfDString(g_utf8_enc, src, -1, ds);
+    return Tcl_DStringValue(ds);
+}
+
+static const char *from_cesu8(const char *src, Tcl_DString *ds) {
+    Tcl_DStringInit(ds);
+    ensure_utf8_enc();
+    if (!g_utf8_enc || !src) {
+        if (src) Tcl_DStringAppend(ds, src, -1);
+        return Tcl_DStringValue(ds);
+    }
+    Tcl_UtfToExternalDString(g_utf8_enc, src, -1, ds);
+    return Tcl_DStringValue(ds);
+}
 
 static void set_result(const char *s) {
     if (g_result) { free(g_result); g_result = NULL; }
     if (s) {
-        size_t n = strlen(s);
+        Tcl_DString ds;
+        const char *out = from_cesu8(s, &ds);
+        size_t n = strlen(out);
         g_result = (char *)malloc(n + 1);
-        if (g_result) memcpy(g_result, s, n + 1);
+        if (g_result) memcpy(g_result, out, n + 1);
+        Tcl_DStringFree(&ds);
     }
 }
 
 EMSCRIPTEN_KEEPALIVE
 int wacl_eval(const char *code) {
     if (!g_interp) { set_result("wacl: interp not initialised"); return TCL_ERROR; }
-    int rc = Tcl_Eval(g_interp, code);
+    Tcl_DString ds;
+    const char *cesu = to_cesu8(code, &ds);
+    int rc = Tcl_Eval(g_interp, cesu);
+    Tcl_DStringFree(&ds);
     if (rc == TCL_OK) {
         set_result(Tcl_GetStringResult(g_interp));
     } else {
@@ -138,16 +180,67 @@ const char *wacl_result(void) {
     return g_result ? g_result : "";
 }
 
+/* get/set return raw UTF-8 to JS (so emoji round-trip cleanly through
+ * UTF8ToString). The returned pointer lives until the next get/set call. */
+static const char *stash_var_result(const char *cesu) {
+    if (g_var_result) { free(g_var_result); g_var_result = NULL; }
+    if (!cesu) return NULL;
+    Tcl_DString ds;
+    const char *out = from_cesu8(cesu, &ds);
+    size_t n = strlen(out);
+    g_var_result = (char *)malloc(n + 1);
+    if (g_var_result) memcpy(g_var_result, out, n + 1);
+    Tcl_DStringFree(&ds);
+    return g_var_result;
+}
+
 EMSCRIPTEN_KEEPALIVE
 const char *wacl_get_var(const char *name) {
     if (!g_interp) return NULL;
-    return Tcl_GetVar(g_interp, name, TCL_GLOBAL_ONLY);
+    Tcl_DString name_ds;
+    const char *cesu_name = to_cesu8(name, &name_ds);
+    const char *val = Tcl_GetVar(g_interp, cesu_name, TCL_GLOBAL_ONLY);
+    Tcl_DStringFree(&name_ds);
+    return stash_var_result(val);
 }
 
 EMSCRIPTEN_KEEPALIVE
 const char *wacl_set_var(const char *name, const char *value) {
     if (!g_interp) return NULL;
-    return Tcl_SetVar(g_interp, name, value, TCL_GLOBAL_ONLY);
+    Tcl_DString name_ds, val_ds;
+    const char *cesu_name = to_cesu8(name, &name_ds);
+    const char *cesu_val  = to_cesu8(value, &val_ds);
+    const char *result = Tcl_SetVar(g_interp, cesu_name, cesu_val, TCL_GLOBAL_ONLY);
+    Tcl_DStringFree(&name_ds);
+    Tcl_DStringFree(&val_ds);
+    return stash_var_result(result);
+}
+
+/* em-x11's `Xutf8LookupString` honours its X11 spec contract and returns
+ * standard 4-byte UTF-8. Tk 8.6 (TCL_UTF_MAX=3) however needs CESU-8
+ * surrogate pairs in entry/text storage -- Stock Tk's tkUnixKey.c
+ * `TkpGetString` zero-converts the bytes from XIM, which is a stock
+ * Tk bug that surfaces as `DeleteChars` byte-stride mismatch and a
+ * `Tcl_Alloc` underflow on the next backspace.
+ *
+ * Rather than patching upstream Tk or breaking em-x11's X11 contract,
+ * we intercept the keypress text at this wacl-tk-only seam: launch.ts
+ * rebinds Module._emx11_set_pending_key_text to point at this wrapper,
+ * which converts the JS-staged UTF-8 to CESU-8 before forwarding to the
+ * real `emx11_set_pending_key_text`. Other em-x11 wasm clients keep
+ * their unmodified UTF-8 path. */
+extern void emx11_set_pending_key_text(const char *utf8);
+
+EMSCRIPTEN_KEEPALIVE
+void wacl_push_key_text(const char *utf8) {
+    if (!utf8 || !*utf8) {
+        emx11_set_pending_key_text(utf8);
+        return;
+    }
+    Tcl_DString ds;
+    const char *cesu = to_cesu8(utf8, &ds);
+    emx11_set_pending_key_text(cesu);
+    Tcl_DStringFree(&ds);
 }
 
 /* Pump the event queue until it's drained. JS drives this on

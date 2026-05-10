@@ -69,6 +69,18 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
   await proc.ready;
   const module = await proc.module;
 
+  /* Redirect em-x11's keypress text staging to wacl_push_key_text so
+   * the JS-supplied UTF-8 is converted to CESU-8 before Tk's tkUnixKey.c
+   * sees it. Stock Tk 8.6 doesn't normalise XIM input, which causes
+   * entry/text DeleteChars to assume CESU-8 stride against a raw 4-byte
+   * UTF-8 buffer -- a Tcl_Alloc underflow on backspace after a typed
+   * emoji. Rebinding here keeps em-x11 X11-spec compliant for non-Tk
+   * wasm clients and leaves Tk source untouched. */
+  const m = module as unknown as Record<string, unknown>;
+  if (typeof m._wacl_push_key_text === 'function') {
+    m._emx11_set_pending_key_text = m._wacl_push_key_text;
+  }
+
   const cwrap = (module as EmscriptenModule & CwrapModule).cwrap;
   const bindings: RuntimeBindings = {
     c_eval:         cwrap('wacl_eval',         'number', ['string']) as RuntimeBindings['c_eval'],
