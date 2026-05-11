@@ -11,9 +11,10 @@ set(TK_ARCHIVE  "${WACL_TK_DIR}/lib/libtk8.6.a")
 set(TCL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/tcl/library")
 set(TK_LIBRARY_DIR  "${CMAKE_SOURCE_DIR}/tk/library")
 
-set(EMX11_DIR     "${CMAKE_SOURCE_DIR}/../em-x11")
-set(EMX11_ARCHIVE "${EMX11_DIR}/build/artifacts/libemx11.a")
-set(EMX11_INCLUDE "${EMX11_DIR}/native/include")
+set(EMX11_DIR        "${CMAKE_SOURCE_DIR}/../em-x11")
+set(EMX11_BUILD_DIR  "${EMX11_DIR}/build")
+set(EMX11_ARCHIVE    "${EMX11_BUILD_DIR}/artifacts/libemx11.a")
+set(EMX11_INCLUDE    "${EMX11_DIR}/native/include")
 
 # em-x11's JS bridges are now embedded in libemx11.a via EM_JS (see
 # em-x11/native/src/bridges.c). No --js-library wiring needed: the
@@ -28,15 +29,42 @@ if(NOT EXISTS "${TCL_LIBRARY_DIR}/init.tcl" OR NOT EXISTS "${TK_LIBRARY_DIR}/tk.
     message(STATUS "wacl-tk-runtime: skipping -- Tcl/Tk script library missing.")
     return()
 endif()
-if(NOT EXISTS "${EMX11_ARCHIVE}")
-    message(STATUS "wacl-tk-runtime: skipping -- em-x11 archive missing at ${EMX11_ARCHIVE}.")
+if(NOT EXISTS "${EMX11_BUILD_DIR}/CMakeCache.txt")
+    message(STATUS "wacl-tk-runtime: skipping -- em-x11 not configured at ${EMX11_BUILD_DIR}. Run `cd ../em-x11 && pnpm build:native` (or `emcmake cmake -S . -B build`) once to bootstrap.")
     return()
 endif()
+
+# Drive em-x11's own build whenever the wacl-tk runtime is rebuilt. We
+# share em-x11's `build/` (rather than a private copy like pyodide-tk
+# uses) so a single `pnpm build:native` over there primes everyone, and
+# repeated wacl-tk builds get em-x11's own incremental dep tracking for
+# free. CONFIGURE_DEPENDS on the source glob keeps CMake reconfiguring
+# wacl-tk when files are added/removed; the inner `cmake --build` no-ops
+# when nothing changed (~tens of ms), so unconditionally running it on
+# every wacl-tk build is cheap. Without this hook, editing em-x11 C
+# sources required a manual `pnpm build:native` over there first --
+# stale archives silently linked into wacl-tk-runtime and produced
+# "fix doesn't take effect" bugs (compare project_pyodide_tk_stage_assets
+# memory: same shape on the pyodide-tk side, solved differently).
+file(GLOB_RECURSE EMX11_SRC CONFIGURE_DEPENDS
+    "${EMX11_DIR}/native/src/*.c"
+    "${EMX11_DIR}/native/src/*.h"
+    "${EMX11_DIR}/native/include/*.h"
+)
+add_custom_command(
+    OUTPUT "${EMX11_ARCHIVE}"
+    COMMAND ${CMAKE_COMMAND} --build "${EMX11_BUILD_DIR}" --target emx11_static
+    DEPENDS ${EMX11_SRC}
+    COMMENT "Building em-x11 static archive (target: emx11_static)"
+    VERBATIM
+)
+add_custom_target(emx11_static_build DEPENDS "${EMX11_ARCHIVE}")
 
 add_executable(wacl-tk-runtime
     wacl-tk-runtime.c
     "${CMAKE_SOURCE_DIR}/opt/wacl.c"
 )
+add_dependencies(wacl-tk-runtime emx11_static_build)
 
 target_include_directories(wacl-tk-runtime PRIVATE
     "${WACL_TK_DIR}/include"
