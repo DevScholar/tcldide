@@ -104,6 +104,7 @@ tkconfig:
 		EMX11_LIBDIR="$(EMX11_LIBDIR)" \
 		ac_cv_lib_Xft_XftFontOpen=yes \
 		ac_cv_lib_fontconfig_FcFontSort=no \
+		ac_cv_lib_X11_XkbKeycodeToKeysym=yes \
 		cross_compiling=yes \
 		emconfigure ./configure --prefix=$(CURDIR)/$(INSTALLDIR) \
 		--host=wasm32-unknown-emscripten \

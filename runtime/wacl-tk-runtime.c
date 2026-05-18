@@ -216,19 +216,31 @@ const char *wacl_set_var(const char *name, const char *value) {
     return stash_var_result(result);
 }
 
-/* em-x11's `Xutf8LookupString` honours its X11 spec contract and returns
- * standard 4-byte UTF-8. Tk 8.6 (TCL_UTF_MAX=3) however needs CESU-8
- * surrogate pairs in entry/text storage -- Stock Tk's tkUnixKey.c
- * `TkpGetString` zero-converts the bytes from XIM, which is a stock
- * Tk bug that surfaces as `DeleteChars` byte-stride mismatch and a
- * `Tcl_Alloc` underflow on the next backspace.
+/* NOT an XIM bypass. This wrapper sits ON the standard XIM ingress
+ * path (em-x11_set_pending_key_text -> Xutf8LookupString) and only
+ * performs a UTF-8 -> CESU-8 transcode required by Tcl 8.6's character
+ * model:
+ *
+ *   em-x11's `Xutf8LookupString` honours its X11 spec contract and
+ *   returns standard 4-byte UTF-8. Tk 8.6 (TCL_UTF_MAX=3) however
+ *   needs CESU-8 surrogate pairs in entry/text storage -- stock Tk's
+ *   tkUnixKey.c `TkpGetString` zero-converts the bytes from XIM, which
+ *   surfaces as `DeleteChars` byte-stride mismatch and a `Tcl_Alloc`
+ *   underflow on the next backspace against a 4-byte emoji.
  *
  * Rather than patching upstream Tk or breaking em-x11's X11 contract,
  * we intercept the keypress text at this wacl-tk-only seam: launch.ts
  * rebinds Module._emx11_set_pending_key_text to point at this wrapper,
- * which converts the JS-staged UTF-8 to CESU-8 before forwarding to the
- * real `emx11_set_pending_key_text`. Other em-x11 wasm clients keep
- * their unmodified UTF-8 path. */
+ * which converts the JS-staged UTF-8 to CESU-8 before forwarding to
+ * the real `emx11_set_pending_key_text`. Other em-x11 wasm clients
+ * (pyodide-tk via CPython, future Motif clients, etc.) keep the
+ * unmodified UTF-8 path because their string model isn't CESU-8.
+ *
+ * The proper long-term fix is upgrading Tcl/Tk from 8.6 to 9.x, whose
+ * internal Unicode IS real UTF-8 -- at that point this wrapper can
+ * be deleted and launch.ts's _emx11_set_pending_key_text rebind
+ * removed. Until then this is the load-bearing compatibility layer
+ * between X11 UTF-8 and Tcl 8.6 CESU-8, NOT temporary scaffolding. */
 extern void emx11_set_pending_key_text(const char *utf8);
 
 EMSCRIPTEN_KEEPALIVE

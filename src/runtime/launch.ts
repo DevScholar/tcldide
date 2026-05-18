@@ -69,13 +69,16 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
   await proc.ready;
   const module = await proc.module;
 
-  /* Redirect em-x11's keypress text staging to wacl_push_key_text so
-   * the JS-supplied UTF-8 is converted to CESU-8 before Tk's tkUnixKey.c
-   * sees it. Stock Tk 8.6 doesn't normalise XIM input, which causes
-   * entry/text DeleteChars to assume CESU-8 stride against a raw 4-byte
-   * UTF-8 buffer -- a Tcl_Alloc underflow on backspace after a typed
-   * emoji. Rebinding here keeps em-x11 X11-spec compliant for non-Tk
-   * wasm clients and leaves Tk source untouched. */
+  /* NOT an XIM bypass -- this hook sits ON the standard XIM ingress
+   * path. emx11_set_pending_key_text -> Xutf8LookupString is the
+   * real protocol path; we only insert a UTF-8 -> CESU-8 transcode
+   * in front of it because Tcl 8.6 (TCL_UTF_MAX=3) stores text as
+   * CESU-8 surrogate pairs, and stock Tk's tkUnixKey.c TkpGetString
+   * zero-converts XIM bytes -- so a 4-byte emoji from XIM lands in
+   * Tk text storage with wrong stride, blowing up on backspace.
+   *
+   * See wacl-tk-runtime.c::wacl_push_key_text for the full rationale.
+   * The compatibility layer goes away when we move to Tcl/Tk 9.x. */
   const m = module as unknown as Record<string, unknown>;
   if (typeof m._wacl_push_key_text === 'function') {
     m._emx11_set_pending_key_text = m._wacl_push_key_text;
