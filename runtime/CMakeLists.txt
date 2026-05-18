@@ -89,7 +89,7 @@ target_link_options(wacl-tk-runtime PRIVATE
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s FORCE_FILESYSTEM=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','FS','stringToUTF8','lengthBytesUTF8']"
-    "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wacl_eval','_wacl_result','_wacl_get_var','_wacl_set_var','_wacl_do_one_event','_wacl_push_key_text','_emx11_push_button_event','_emx11_push_motion_event','_emx11_push_key_event','_emx11_push_expose_event','_emx11_push_map_request','_emx11_push_reparent_notify','_malloc','_free']"
+    "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wacl_eval','_wacl_result','_wacl_get_var','_wacl_set_var','_wacl_do_one_event','_wacl_push_key_text','_emx11_push_button_event','_emx11_push_motion_event','_emx11_push_key_event','_emx11_push_key_event_kc','_emx11_install_keysym','_emx11_push_expose_event','_emx11_push_map_request','_emx11_push_reparent_notify','_malloc','_free']"
     "SHELL:-Wl,--error-limit=0"
     # --profiling-funcs: keep wasm function names through wasm-opt so
     # browser stacks show C symbols instead of $func1234 indices.
