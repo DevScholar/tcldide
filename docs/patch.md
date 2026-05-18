@@ -105,7 +105,10 @@ emconfigure ./configure --prefix=$(CURDIR)/jsbuild \
 Same em-x11 redirection trick the project has always used: real
 `X11/*.h` headers come from em-x11, but no Xlib `.so` is supplied.
 Tk's unresolved X11 symbols stay in the static archive and are
-filled by `libemx11.a` at runtime link time.
+filled at the runtime link step by em-x11's split archives —
+`libX11.a`, `libXext.a`, `libXrender.a`, `libfontconfig.a`,
+`libXft.a` (see `wacl-tk/runtime/CMakeLists.txt`'s
+`EMX11_ARCHIVES`; GLX is not used by Tk).
 
 - `ac_cv_lib_Xft_XftFontOpen=yes` and
   `ac_cv_lib_fontconfig_FcFontSort=no` short-circuit Tk's optional
