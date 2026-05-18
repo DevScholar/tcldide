@@ -13,13 +13,27 @@ set(TK_LIBRARY_DIR  "${CMAKE_SOURCE_DIR}/tk/library")
 
 set(EMX11_DIR        "${CMAKE_SOURCE_DIR}/../em-x11")
 set(EMX11_BUILD_DIR  "${EMX11_DIR}/build")
-set(EMX11_ARCHIVE    "${EMX11_BUILD_DIR}/artifacts/libemx11.a")
+set(EMX11_LIB_DIR    "${EMX11_BUILD_DIR}/artifacts")
 set(EMX11_INCLUDE    "${EMX11_DIR}/native/include")
 
-# em-x11's JS bridges are now embedded in libemx11.a via EM_JS (see
+# em-x11 used to ship one fat libemx11.a; it's now split the same way a
+# real X system ships -- libX11.a / libXext.a / libXrender.a /
+# libfontconfig.a / libXft.a -- so we link against the standard set.
+# Tk uses Xft (for sub-pixel font rendering), which transitively pulls
+# in libXrender + libfontconfig + libX11. GLX is unused on the Tk side.
+set(EMX11_ARCHIVES
+    "${EMX11_LIB_DIR}/libXft.a"
+    "${EMX11_LIB_DIR}/libXrender.a"
+    "${EMX11_LIB_DIR}/libfontconfig.a"
+    "${EMX11_LIB_DIR}/libXext.a"
+    "${EMX11_LIB_DIR}/libX11.a"
+)
+
+# em-x11's JS bridges are now embedded in libX11.a via EM_JS (see
 # em-x11/native/src/bridges.c). No --js-library wiring needed: the
 # archive carries its own __em_js__* data symbols that emcc's post-link
-# pass picks up. Keep the prereq guards on the archive itself.
+# pass picks up. Keep the prereq guards on the X11 archive itself --
+# the rest are built alongside it from the same configure step.
 
 if(NOT EXISTS "${TCL_ARCHIVE}" OR NOT EXISTS "${TK_ARCHIVE}")
     message(STATUS "wacl-tk-runtime: skipping -- ${TCL_ARCHIVE} or ${TK_ARCHIVE} missing.")
@@ -52,13 +66,15 @@ file(GLOB_RECURSE EMX11_SRC CONFIGURE_DEPENDS
     "${EMX11_DIR}/native/include/*.h"
 )
 add_custom_command(
-    OUTPUT "${EMX11_ARCHIVE}"
-    COMMAND ${CMAKE_COMMAND} --build "${EMX11_BUILD_DIR}" --target emx11_static
+    OUTPUT ${EMX11_ARCHIVES}
+    COMMAND ${CMAKE_COMMAND} --build "${EMX11_BUILD_DIR}"
+            --target X11 --target Xext --target Xrender
+            --target fontconfig --target Xft
     DEPENDS ${EMX11_SRC}
-    COMMENT "Building em-x11 static archive (target: emx11_static)"
+    COMMENT "Building em-x11 static archives (X11/Xext/Xrender/fontconfig/Xft)"
     VERBATIM
 )
-add_custom_target(emx11_static_build DEPENDS "${EMX11_ARCHIVE}")
+add_custom_target(emx11_static_build DEPENDS ${EMX11_ARCHIVES})
 
 add_executable(wacl-tk-runtime
     wacl-tk-runtime.c
@@ -75,7 +91,7 @@ target_include_directories(wacl-tk-runtime PRIVATE
 target_link_libraries(wacl-tk-runtime PRIVATE
     "${TK_ARCHIVE}"
     "${TCL_ARCHIVE}"
-    "${EMX11_ARCHIVE}"
+    ${EMX11_ARCHIVES}
 )
 
 target_compile_options(wacl-tk-runtime PRIVATE ${WACL_TK_WARN_FLAGS})
