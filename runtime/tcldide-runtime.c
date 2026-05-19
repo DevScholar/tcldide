@@ -1,14 +1,14 @@
 /*
- * wacl-tk-runtime -- generic Tcl/Tk wasm runtime exposing a Pyodide-style
+ * tcldide-runtime -- generic Tcl/Tk wasm runtime exposing a Pyodide-style
  * JS API. main() initialises Tcl + Tk + the browser notifier and returns;
  * the runtime stays alive (noExitRuntime). All evaluation happens through
  * cwrap'd entry points the JS loader calls:
  *
- *   wacl_eval        -- Tcl_Eval into a private result slot.
- *   wacl_result      -- last captured result (or errorInfo on TCL_ERROR).
- *   wacl_get_var     -- Tcl_GetVar in global scope.
- *   wacl_set_var     -- Tcl_SetVar in global scope.
- *   wacl_do_one_event-- pump the Tcl/Tk event queue once (TCL_DONT_WAIT).
+ *   tcldide_eval        -- Tcl_Eval into a private result slot.
+ *   tcldide_result      -- last captured result (or errorInfo on TCL_ERROR).
+ *   tcldide_get_var     -- Tcl_GetVar in global scope.
+ *   tcldide_set_var     -- Tcl_SetVar in global scope.
+ *   tcldide_do_one_event-- pump the Tcl/Tk event queue once (TCL_DONT_WAIT).
  *
  * The browser notifier is the same shape as demos/tk-hello/tk-hello.c:
  * yield to the browser per-tick and pump every registered fd handler so
@@ -23,7 +23,7 @@
 #include <string.h>
 #include <emscripten.h>
 
-extern int Wacl_Init(Tcl_Interp *interp);
+extern int Tcldide_Init(Tcl_Interp *interp);
 
 #define MAX_FILE_HANDLERS 8
 typedef struct {
@@ -54,7 +54,7 @@ static void track_CreateFileHandler(int fd, int mask, Tcl_FileProc *proc, Client
             return;
         }
     }
-    fprintf(stderr, "wacl-tk: file handler table full (fd=%d dropped)\n", fd);
+    fprintf(stderr, "tcldide: file handler table full (fd=%d dropped)\n", fd);
 }
 
 static void track_DeleteFileHandler(int fd) {
@@ -159,8 +159,8 @@ static void set_result(const char *s) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-int wacl_eval(const char *code) {
-    if (!g_interp) { set_result("wacl: interp not initialised"); return TCL_ERROR; }
+int tcldide_eval(const char *code) {
+    if (!g_interp) { set_result("tcldide: interp not initialised"); return TCL_ERROR; }
     Tcl_DString ds;
     const char *cesu = to_cesu8(code, &ds);
     int rc = Tcl_Eval(g_interp, cesu);
@@ -176,7 +176,7 @@ int wacl_eval(const char *code) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-const char *wacl_result(void) {
+const char *tcldide_result(void) {
     return g_result ? g_result : "";
 }
 
@@ -195,7 +195,7 @@ static const char *stash_var_result(const char *cesu) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-const char *wacl_get_var(const char *name) {
+const char *tcldide_get_var(const char *name) {
     if (!g_interp) return NULL;
     Tcl_DString name_ds;
     const char *cesu_name = to_cesu8(name, &name_ds);
@@ -205,7 +205,7 @@ const char *wacl_get_var(const char *name) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-const char *wacl_set_var(const char *name, const char *value) {
+const char *tcldide_set_var(const char *name, const char *value) {
     if (!g_interp) return NULL;
     Tcl_DString name_ds, val_ds;
     const char *cesu_name = to_cesu8(name, &name_ds);
@@ -229,7 +229,7 @@ const char *wacl_set_var(const char *name, const char *value) {
  *   underflow on the next backspace against a 4-byte emoji.
  *
  * Rather than patching upstream Tk or breaking em-x11's X11 contract,
- * we intercept the keypress text at this wacl-tk-only seam: launch.ts
+ * we intercept the keypress text at this tcldide-only seam: launch.ts
  * rebinds Module._emx11_set_pending_key_text to point at this wrapper,
  * which converts the JS-staged UTF-8 to CESU-8 before forwarding to
  * the real `emx11_set_pending_key_text`. Other em-x11 wasm clients
@@ -244,7 +244,7 @@ const char *wacl_set_var(const char *name, const char *value) {
 extern void emx11_set_pending_key_text(const char *utf8);
 
 EMSCRIPTEN_KEEPALIVE
-void wacl_push_key_text(const char *utf8) {
+void tcldide_push_key_text(const char *utf8) {
     if (!utf8 || !*utf8) {
         emx11_set_pending_key_text(utf8);
         return;
@@ -267,7 +267,7 @@ void wacl_push_key_text(const char *utf8) {
  * `TCL_ALL_EVENTS = ~TCL_DONT_WAIT` is a sign-extended ~0, which is
  * easy to misencode as 0x1f and silently drop TCL_IDLE_EVENTS (0x20). */
 EMSCRIPTEN_KEEPALIVE
-int wacl_do_one_event(void) {
+int tcldide_do_one_event(void) {
     if (!g_interp) return 0;
     int processed = 0;
     /* Cap at 256 to bound a single tick: a runaway `after 0` chain
@@ -289,24 +289,24 @@ int main(int argc, char **argv) {
     setenv("TK_LIBRARY",  "/tk",  1);
     setenv("DISPLAY",     ":0",   1);
 
-    Tcl_FindExecutable("wacl-tk-runtime");
+    Tcl_FindExecutable("tcldide-runtime");
     g_interp = Tcl_CreateInterp();
     if (!g_interp) {
-        fprintf(stderr, "wacl-tk-runtime: Tcl_CreateInterp failed\n");
+        fprintf(stderr, "tcldide-runtime: Tcl_CreateInterp failed\n");
         return 1;
     }
 
     if (Tcl_Init(g_interp) != TCL_OK) {
-        fprintf(stderr, "wacl-tk-runtime: Tcl_Init failed: %s\n",
+        fprintf(stderr, "tcldide-runtime: Tcl_Init failed: %s\n",
                 Tcl_GetStringResult(g_interp));
         return 1;
     }
 
-    /* Register ::wacl::dom and ::wacl::jscall (opt/wacl.c). Failures
+    /* Register ::tcldide::dom and ::tcldide::jscall (opt/tcldide.c). Failures
      * here are non-fatal -- a runtime without the JS bridge can still
      * eval pure-Tcl/Tk code. */
-    if (Wacl_Init(g_interp) != TCL_OK) {
-        fprintf(stderr, "wacl-tk-runtime: Wacl_Init failed: %s\n",
+    if (Tcldide_Init(g_interp) != TCL_OK) {
+        fprintf(stderr, "tcldide-runtime: Tcldide_Init failed: %s\n",
                 Tcl_GetStringResult(g_interp));
     }
 
@@ -315,7 +315,7 @@ int main(int argc, char **argv) {
     Tcl_Eval(g_interp, "catch {source /tcl/auto.tcl}");
 
     if (Tk_Init(g_interp) != TCL_OK) {
-        fprintf(stderr, "wacl-tk-runtime: Tk_Init failed: %s\n",
+        fprintf(stderr, "tcldide-runtime: Tk_Init failed: %s\n",
                 Tcl_GetStringResult(g_interp));
         return 1;
     }

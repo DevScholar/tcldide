@@ -1,12 +1,12 @@
 /**
  * globals — Pyodide-style namespace for Tcl global variables.
- * Reads/writes go through wacl_get_var / wacl_set_var; delete loops
+ * Reads/writes go through tcldide_get_var / tcldide_set_var; delete loops
  * back through Tcl's own `unset` since there's no direct C entry.
  */
 
 import type { RuntimeBindings } from './launch.js';
 
-export interface WaclTkGlobals {
+export interface TcldideGlobals {
   get(name: string): string | undefined;
   set(name: string, value: unknown): void;
   has(name: string): boolean;
@@ -16,7 +16,7 @@ export interface WaclTkGlobals {
 export function makeGlobals(
   bindings: RuntimeBindings,
   runTcl: (code: string) => string,
-): WaclTkGlobals {
+): TcldideGlobals {
   return {
     get(name) {
       const v = bindings.c_get_var(name);

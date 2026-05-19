@@ -5,11 +5,11 @@
 
 import type { EmX11 } from '../../../em-x11/src/index.js';
 
-export interface WaclTkCanvas {
+export interface TcldideCanvas {
   getCanvas2D(): HTMLCanvasElement;
 }
 
-export function makeCanvas(em: EmX11): WaclTkCanvas {
+export function makeCanvas(em: EmX11): TcldideCanvas {
   return {
     getCanvas2D: () => em.display.canvas as HTMLCanvasElement,
   };

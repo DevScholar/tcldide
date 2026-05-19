@@ -2,8 +2,8 @@
 *.zip
 *.data
 preGeneratedJs.js
-wacl.js
-wacl.wasm
+tcldide.js
+tcldide.wasm
 /jsbuild/
 /library/
 /tcl/

@@ -1,6 +1,6 @@
 /**
  * eval — runTcl (sync) and runTclAsync (async) wrappers around
- * wacl_eval. Translate the wasm's two return modes (sync number vs
+ * tcldide_eval. Translate the wasm's two return modes (sync number vs
  * suspending Promise) into the two user-facing entry shapes.
  *
  * Sync runTcl path:
@@ -33,7 +33,7 @@ export function makeEval(bindings: RuntimeBindings, queue: AsyncifyQueue): EvalA
   const runTcl = (code: string): string => {
     if (queue.busy) {
       throw new Error(
-        'wacl-tk: a previous async Tcl call has not finished unwinding ' +
+        'tcldide: a previous async Tcl call has not finished unwinding ' +
         '(Asyncify supports one unwind at a time). Use runTclAsync(...) ' +
         'or await an in-flight runTclAsync before calling runTcl.',
       );
@@ -42,7 +42,7 @@ export function makeEval(bindings: RuntimeBindings, queue: AsyncifyQueue): EvalA
     if (rc instanceof Promise) {
       queue.park(rc);
       throw new Error(
-        'wacl-tk: runTcl saw an async script (it called vwait/update). ' +
+        'tcldide: runTcl saw an async script (it called vwait/update). ' +
         'Use runTclAsync(...) instead.',
       );
     }

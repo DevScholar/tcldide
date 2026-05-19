@@ -1,7 +1,7 @@
 {
-  "name": "@devscholar/wacl-tk-demos",
+  "name": "@devscholar/tcldide-demos",
   "version": "0.0.1",
-  "description": "Demos that compose wacl-tk's Tcl/Tk with em-x11's Xlib surface.",
+  "description": "Demos that compose tcldide's Tcl/Tk with em-x11's Xlib surface.",
   "type": "module",
   "license": "MIT",
   "private": true,

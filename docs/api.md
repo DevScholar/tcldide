@@ -1,12 +1,12 @@
-# wacl-tk JavaScript API
+# tcldide JavaScript API
 
-The wacl-tk JavaScript API mirrors [Pyodide][pyodide] so users coming
+The tcldide JavaScript API mirrors [Pyodide][pyodide] so users coming
 from Pyodide can pick it up without re-learning anything: replace
-`loadPyodide` with `loadWaclTk` and `runPython` with `runTcl`. The
+`loadPyodide` with `loadTcldide` and `runPython` with `runTcl`. The
 shape, error semantics, and lifecycle are intentionally identical
 where the languages allow.
 
-This page documents the **most common** entry points (`loadWaclTk`,
+This page documents the **most common** entry points (`loadTcldide`,
 `runTcl`, `runTclAsync`, `globals`, `canvas`, `setStdout`/`setStderr`,
 `FS`, `version`). Less-common surface area (foreign function interface,
 `pyimport`, lockfiles, package loading) is not yet implemented.
@@ -17,26 +17,26 @@ This page documents the **most common** entry points (`loadWaclTk`,
 
 ## Top-level
 
-### `loadWaclTk(config?) → Promise<WaclTkAPI>`
+### `loadTcldide(config?) → Promise<TcldideAPI>`
 
-Boot the runtime. Loads `wacl-tk-runtime.{js,wasm,data}`, initialises
+Boot the runtime. Loads `tcldide-runtime.{js,wasm,data}`, initialises
 Tcl + Tk, constructs the em-x11 instance (which mirrors itself onto
 `globalThis.emX11` for DevTools / EM_JS bridge access), and returns
 the API object.
 
 ```js
-import { loadWaclTk } from '/src/wacl-tk.js';
+import { loadTcldide } from '/src/tcldide.js';
 
-const wacl = await loadWaclTk({ width: 800, height: 600 });
+const tcldide = await loadTcldide({ width: 800, height: 600 });
 ```
 
-#### `WaclTkConfig`
+#### `TcldideConfig`
 
 | Field      | Type                          | Default                              | Notes |
 |------------|-------------------------------|--------------------------------------|-------|
-| `indexURL` | `string`                      | `/build/artifacts/wacl-tk-runtime`   | Base URL for the runtime artifacts. |
-| `glueURL`  | `string`                      | `${indexURL}/wacl-tk-runtime.js`     | Override the .js glue URL. |
-| `wasmURL`  | `string`                      | `${indexURL}/wacl-tk-runtime.wasm`   | Override the .wasm URL. |
+| `indexURL` | `string`                      | `/build/artifacts/tcldide-runtime`   | Base URL for the runtime artifacts. |
+| `glueURL`  | `string`                      | `${indexURL}/tcldide-runtime.js`     | Override the .js glue URL. |
+| `wasmURL`  | `string`                      | `${indexURL}/tcldide-runtime.wasm`   | Override the .wasm URL. |
 | `canvas`   | `HTMLCanvasElement`           | (auto-create)                        | Existing canvas for Tk to paint into. Pyodide's `setCanvas2D` analog. |
 | `width`    | `number`                      | `1024`                               | Logical width of the auto-created canvas. |
 | `height`   | `number`                      | `768`                                | Logical height of the auto-created canvas. |
@@ -45,43 +45,43 @@ const wacl = await loadWaclTk({ width: 800, height: 600 });
 
 ---
 
-## `WaclTkAPI`
+## `TcldideAPI`
 
-The object returned by `loadWaclTk`.
+The object returned by `loadTcldide`.
 
-### `wacl.runTcl(code) → string`
+### `tcldide.runTcl(code) → string`
 
 Evaluate a Tcl script synchronously. Returns the script's result as a
 string (same as the `puts $result` you'd see in `tclsh`). Throws
 [`TclError`](#class-tclerror) on `TCL_ERROR`.
 
 ```js
-wacl.runTcl(`
+tcldide.runTcl(`
   button .b -text Click -command { incr ::n }
   pack .b
 `);
-const v = wacl.runTcl('expr {2 + 3}');     // "5"
+const v = tcldide.runTcl('expr {2 + 3}');     // "5"
 ```
 
 `runTcl` will throw if the script blocks on the event loop (`vwait`,
-`tkwait vis`, etc.) — use [`runTclAsync`](#waclruntclasynccode--promisestring)
+`tkwait vis`, etc.) — use [`runTclAsync`](#tcldideruntclasynccode--promisestring)
 for those.
 
-### `wacl.runTclAsync(code) → Promise<string>`
+### `tcldide.runTclAsync(code) → Promise<string>`
 
 Evaluate a Tcl script while the Tk event loop pumps in the background.
 Required for scripts that use `vwait`, `tkwait`, or any blocking event
 wait. Returns the script's result.
 
 ```js
-const result = await wacl.runTclAsync(`
+const result = await tcldide.runTclAsync(`
   after 200 { set ::done 1 }
   vwait ::done
   return "ok"
 `);
 ```
 
-### `wacl.globals`
+### `tcldide.globals`
 
 Tcl global namespace, mirroring `pyodide.globals`.
 
@@ -93,13 +93,13 @@ Tcl global namespace, mirroring `pyodide.globals`.
 | `globals.delete(name)`   | `void`               | Unset; no-op if it doesn't exist. |
 
 ```js
-wacl.runTcl('set ::greeting "hi"');
-wacl.globals.get('greeting');         // "hi"
-wacl.globals.set('count', 42);
-wacl.runTcl('return $::count');       // "42"
+tcldide.runTcl('set ::greeting "hi"');
+tcldide.globals.get('greeting');         // "hi"
+tcldide.globals.set('count', 42);
+tcldide.runTcl('return $::count');       // "42"
 ```
 
-### `wacl.canvas`
+### `tcldide.canvas`
 
 | Method                       | Returns               |
 |------------------------------|-----------------------|
@@ -107,26 +107,26 @@ wacl.runTcl('return $::count');       // "42"
 
 Returns the HTML5 canvas Tk is painting into. Mirrors
 `pyodide.canvas.getCanvas2D()`. To attach an existing canvas instead
-of letting wacl-tk create one, pass it as the `canvas` option to
-`loadWaclTk` — Pyodide's runtime `setCanvas2D` is not yet supported
+of letting tcldide create one, pass it as the `canvas` option to
+`loadTcldide` — Pyodide's runtime `setCanvas2D` is not yet supported
 because em-x11 binds its renderer at startup.
 
-### `wacl.setStdout(opts)` / `wacl.setStderr(opts)`
+### `tcldide.setStdout(opts)` / `tcldide.setStderr(opts)`
 
 Replace the line-buffered stdout/stderr handler. Same shape as
 Pyodide's `setStdout` (only the `batched` form is supported).
 
 ```js
-wacl.setStdout({ batched: (line) => myLog.append(line) });
+tcldide.setStdout({ batched: (line) => myLog.append(line) });
 ```
 
-### `wacl.version` · `wacl.tkVersion`
+### `tcldide.version` · `tcldide.tkVersion`
 
 The Tcl and Tk runtime versions, e.g. `"8.6.13"`. Read straight out of
 `$tcl_version` / `$tk_version` so you get whatever the linked archives
 report.
 
-### `wacl.FS`
+### `tcldide.FS`
 
 The Emscripten in-memory filesystem object. Same surface as
 `pyodide.FS` — use it to stage files into Tcl's view of the world or
@@ -134,11 +134,11 @@ to mount IDB / NODEFS. The Tcl/Tk script libraries are pre-mounted at
 `/tcl` and `/tk` (set via `--preload-file`).
 
 ```js
-wacl.FS.writeFile('/script.tcl', 'puts hello');
-wacl.runTcl('source /script.tcl');
+tcldide.FS.writeFile('/script.tcl', 'puts hello');
+tcldide.runTcl('source /script.tcl');
 ```
 
-### `wacl.em` / `wacl.module`
+### `tcldide.em` / `tcldide.module`
 
 Escape hatches. `em` is the [`@devscholar/em-x11`](https://github.com/DevScholar/em-x11)
 instance returned by `createEmX11` — use `em.fs`, `em.display`,
@@ -158,7 +158,7 @@ value of Tcl's `$errorInfo` (the closest analog to a Python traceback).
 
 ```js
 try {
-  wacl.runTcl('error "boom"');
+  tcldide.runTcl('error "boom"');
 } catch (e) {
   if (e instanceof TclError) console.warn(e.errorInfo);
 }
@@ -168,69 +168,69 @@ try {
 
 ## Mapping from Pyodide
 
-| Pyodide                              | wacl-tk                       |
+| Pyodide                              | tcldide                       |
 |--------------------------------------|-------------------------------|
-| `loadPyodide(config)`                | `loadWaclTk(config)`          |
-| `pyodide.runPython(code)`            | `wacl.runTcl(code)`           |
-| `pyodide.runPythonAsync(code)`       | `wacl.runTclAsync(code)`      |
-| `pyodide.globals.get(n)`             | `wacl.globals.get(n)`         |
-| `pyodide.globals.set(n, v)`          | `wacl.globals.set(n, v)`      |
-| `pyodide.canvas.getCanvas2D()`       | `wacl.canvas.getCanvas2D()`   |
-| `pyodide.canvas.setCanvas2D(c)`      | `loadWaclTk({ canvas: c })`   |
-| `pyodide.setStdout({ batched })`     | `wacl.setStdout({ batched })` |
-| `pyodide.setStderr({ batched })`     | `wacl.setStderr({ batched })` |
-| `pyodide.version`                    | `wacl.version`                |
-| `pyodide.FS`                         | `wacl.FS`                     |
+| `loadPyodide(config)`                | `loadTcldide(config)`          |
+| `pyodide.runPython(code)`            | `tcldide.runTcl(code)`           |
+| `pyodide.runPythonAsync(code)`       | `tcldide.runTclAsync(code)`      |
+| `pyodide.globals.get(n)`             | `tcldide.globals.get(n)`         |
+| `pyodide.globals.set(n, v)`          | `tcldide.globals.set(n, v)`      |
+| `pyodide.canvas.getCanvas2D()`       | `tcldide.canvas.getCanvas2D()`   |
+| `pyodide.canvas.setCanvas2D(c)`      | `loadTcldide({ canvas: c })`   |
+| `pyodide.setStdout({ batched })`     | `tcldide.setStdout({ batched })` |
+| `pyodide.setStderr({ batched })`     | `tcldide.setStderr({ batched })` |
+| `pyodide.version`                    | `tcldide.version`                |
+| `pyodide.FS`                         | `tcldide.FS`                     |
 | `PythonError`                        | `TclError`                    |
 
 ---
 
-## Calling JavaScript from Tcl (`::wacl::jscall`)
+## Calling JavaScript from Tcl (`::tcldide::jscall`)
 
-wacl-tk inherits wacl's low-level JS bridge. It lets Tcl call a
+tcldide inherits tcldide's low-level JS bridge. It lets Tcl call a
 JavaScript function that has been registered in Emscripten's function
 table.
 
 ### Overview
 
 ```
-JS side     Module.wacl.jswrap(fn, returnType, argType)
-                → returns a Tcl command string, e.g. "::wacl::jscall 42 int string"
+JS side     Module.tcldide.jswrap(fn, returnType, argType)
+                → returns a Tcl command string, e.g. "::tcldide::jscall 42 int string"
 
 Tcl side    eval $cmd $arg
                 → calls fn($arg), returns the result as a Tcl value
 ```
 
-### `Module.wacl.jswrap(fn, returnType, argType) → string`
+### `Module.tcldide.jswrap(fn, returnType, argType) → string`
 
 Registers a JavaScript function in Emscripten's indirect call table and
-returns the corresponding `::wacl::jscall` command string. Store the
+returns the corresponding `::tcldide::jscall` command string. Store the
 result as a Tcl variable and call it like any other command.
 
 `argType` may be either:
 
 - a **string** (one of `void int bool double string array`) — single-argument
-  form, the original wacl behavior. Wasm signature is `argType → returnType`.
-- an **array** of type strings — multi-argument form. wacl-tk packs the Tcl
+  form, the original tcldide behavior. Wasm signature is `argType → returnType`.
+- an **array** of type strings — multi-argument form. tcldide packs the Tcl
   arguments into a Tcl-list string and the wrapper unpacks them on the JS
   side. Wasm signature collapses to `string → returnType` regardless of arity.
 
 ```js
 // Single-argument
-const greet = Module.wacl.jswrap(
+const greet = Module.tcldide.jswrap(
   (name) => { console.log('Hello from Tcl:', name); return name.length; },
   'int',
   'string'
 );
-wacl.globals.set('greetCmd', greet);
+tcldide.globals.set('greetCmd', greet);
 
 // Multi-argument
-const addCmd = Module.wacl.jswrap(
+const addCmd = Module.tcldide.jswrap(
   (a, b) => a + b,
   'int',
   ['int', 'int']     // ← array form
 );
-wacl.globals.set('addCmd', addCmd);
+tcldide.globals.set('addCmd', addCmd);
 ```
 
 ```tcl
@@ -239,7 +239,7 @@ set len [eval $::greetCmd "world"]    ;# 5
 set sum [eval $::addCmd 3 4]          ;# 7
 ```
 
-### `::wacl::jscall fcnPtr returnType argType ?arg1 arg2 ...?`
+### `::tcldide::jscall fcnPtr returnType argType ?arg1 arg2 ...?`
 
 The Tcl command itself. Normally you never write this by hand — use
 `jswrap` on the JS side to produce the right invocation. The arguments:
@@ -253,13 +253,13 @@ The Tcl command itself. Normally you never write this by hand — use
 
 ```tcl
 # zero-argument call
-::wacl::jscall $ptr void void
+::tcldide::jscall $ptr void void
 
 # single-argument call
-::wacl::jscall $ptr int string "hello"
+::tcldide::jscall $ptr int string "hello"
 
 # multi-argument call (jswrap normally produces this)
-::wacl::jscall $ptr int string 3 4
+::tcldide::jscall $ptr int string 3 4
 ```
 
 #### Why multi-arg requires `argType string`/`array`
@@ -287,13 +287,13 @@ invoking the user function.
 
 ## Not yet implemented
 
-These exist in Pyodide but are out of scope for the first wacl-tk API
+These exist in Pyodide but are out of scope for the first tcldide API
 cut. None of them are needed to write a typical Tk demo.
 
 - `loadPackage`, `loadPackagesFromImports`, `pyimport`, `unpackArchive`
 - Foreign function interface (`pyodide.ffi.*`, proxies, `toPy`)
-- `registerJsModule` / `unregisterJsModule` (use [`::wacl::jscall`](#calling-javascript-from-tcl-wacljs call) instead — see dedicated section above)
+- `registerJsModule` / `unregisterJsModule` (use [`::tcldide::jscall`](#calling-javascript-from-tcl-tcldidejs call) instead — see dedicated section above)
 - `setStdin`, `setInterruptBuffer`, `checkInterrupt`
 - Lockfiles, `mountNativeFS`, `mountNodeFS`
-- Runtime `canvas.setCanvas2D(c)` (pass `canvas` to `loadWaclTk` instead)
+- Runtime `canvas.setCanvas2D(c)` (pass `canvas` to `loadTcldide` instead)
 

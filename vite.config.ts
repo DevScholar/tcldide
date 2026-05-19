@@ -21,7 +21,7 @@ function listDemoEntries(): { name: string; path: string }[] {
 function printDemoUrls(): Plugin {
   const demos = listDemoEntries();
   return {
-    name: 'wacl-tk-print-demo-urls',
+    name: 'tcldide-print-demo-urls',
     configureServer(server) {
       const originalPrint = server.printUrls.bind(server);
       server.printUrls = () => {

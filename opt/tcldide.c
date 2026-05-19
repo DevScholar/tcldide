@@ -184,7 +184,7 @@ JsCallCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
     }
     else if (objc == 5)
     {
-        /* Single-argument fast path (back-compat with original wacl). */
+        /* Single-argument fast path (back-compat with original tcldide). */
         EXPAND_FCN_ARG_TYPE( result = fcn(val); )
     }
     else
@@ -216,31 +216,31 @@ JsCallCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
 
 
 static void
-WaclDeleteNamespace(ClientData clientData)
+TcldideDeleteNamespace(ClientData clientData)
 {
 }
 
 int
-Wacl_Init(Tcl_Interp* interp)
+Tcldide_Init(Tcl_Interp* interp)
 {
-    Tcl_Namespace* waclNs = NULL;
+    Tcl_Namespace* tcldideNs = NULL;
     
     /* commands initialization */
-    waclNs = Tcl_CreateNamespace(interp, "::wacl", NULL, WaclDeleteNamespace);
+    tcldideNs = Tcl_CreateNamespace(interp, "::tcldide", NULL, TcldideDeleteNamespace);
     Tcl_CreateObjCommand(interp, 
-                         "::wacl::dom", 
+                         "::tcldide::dom", 
                          DomCmd, 
                          (ClientData) NULL, 
                          (Tcl_CmdDeleteProc *) NULL);
     Tcl_CreateObjCommand(interp, 
-                         "::wacl::jscall", 
+                         "::tcldide::jscall", 
                          JsCallCmd, 
                          (ClientData) NULL, 
                          (Tcl_CmdDeleteProc *) NULL);
 
-    Tcl_Export(interp, waclNs, "dom", 0);
-    Tcl_Export(interp, waclNs, "jscall", 0);
-    Tcl_PkgProvide(interp, "wacl", "1.0.0");
+    Tcl_Export(interp, tcldideNs, "dom", 0);
+    Tcl_Export(interp, tcldideNs, "jscall", 0);
+    Tcl_PkgProvide(interp, "tcldide", "1.0.0");
     return TCL_OK;
 }
 

@@ -1,4 +1,4 @@
-# Build Tcl + Tk static archives for the wacl-tk-runtime cmake target.
+# Build Tcl + Tk static archives for the tcldide-runtime cmake target.
 #
 # This Makefile is *only* the prep stage: download Tcl/Tk source, run their
 # autoconf/configure under emconfigure, and produce libtcl8.6.a / libtk8.6.a
@@ -7,10 +7,10 @@
 # libemx11.a.
 #
 # Live targets (per setup.sh):
-#   waclprep    download Tcl source (no source patch)
+#   tcldideprep    download Tcl source (no source patch)
 #   tkprep      download Tk source
 #   config      configure Tcl
-#   waclinstall build + install libtcl
+#   tcldideinstall build + install libtcl
 #   tkinstall   build + install libtk (depends on em-x11 headers)
 #   clean / distclean
 #
@@ -30,13 +30,13 @@ EMX11_LIBDIR=$(EMX11_DIR)/build/artifacts
 # Optimisation injected into the Tcl/Tk Makefiles after configure runs.
 BCFLAGS?=-Oz -s WASM=1
 
-.PHONY: waclprep config waclinstall tkprep tkconfig libtk tkinstall tkclean clean distclean reset
+.PHONY: tcldideprep config tcldideinstall tkprep tkconfig libtk tkinstall tkclean clean distclean reset
 
 # Stock Tcl 8.6 source. No `patch` step: every wasm-specific tweak lives
-# in configure flags below (see config target). The wacl-specific Tcl
-# commands (`::wacl::dom`, `::wacl::jscall`) are compiled into the runtime
-# executable from opt/wacl.c, not into libtcl, so Tcl can stay pristine.
-waclprep:
+# in configure flags below (see config target). The tcldide-specific Tcl
+# commands (`::tcldide::dom`, `::tcldide::jscall`) are compiled into the runtime
+# executable from opt/tcldide.c, not into libtcl, so Tcl can stay pristine.
+tcldideprep:
 	wget -nc http://prdownloads.sourceforge.net/tcl/tcl-core$(TCLVERSION)-src.tar.gz
 	mkdir -p tcl
 	tar -C tcl --strip-components=1 -xf tcl-core$(TCLVERSION)-src.tar.gz
@@ -71,7 +71,7 @@ config:
 # Build only the static archives, never tclsh -- tclsh is a native exe
 # entry point that has no place in a browser build, and the install-binaries
 # target would also try to install it. Manual cp instead of `make install`.
-waclinstall:
+tcldideinstall:
 	cd tcl/unix && emmake make -j libtcl8.6.a libtclstub8.6.a
 	mkdir -p $(INSTALLDIR)/lib $(INSTALLDIR)/include
 	cp tcl/unix/libtcl8.6.a tcl/unix/libtclstub8.6.a $(INSTALLDIR)/lib/
@@ -84,7 +84,7 @@ waclinstall:
 # Stock Tk 8.6 against em-x11's Xlib. Tk's internal xlib/*.c is only used
 # for Aqua builds (see unix/Makefile.in AQUA_OBJS), so --with-x keeps it
 # out of the compile -- all X symbols stay unresolved in libtk.a and get
-# filled by libemx11.a at runtime link time. Prerequisites: waclinstall
+# filled by libemx11.a at runtime link time. Prerequisites: tcldideinstall
 # must have produced $(INSTALLDIR)/lib/libtcl8.6.a first, and em-x11
 # must have been built (EMX11_LIBDIR exists) at least for the header tree.
 

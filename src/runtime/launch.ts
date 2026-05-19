@@ -1,5 +1,5 @@
 /**
- * launch — boot the wacl-tk-runtime wasm under em-x11 and bind the
+ * launch — boot the tcldide-runtime wasm under em-x11 and bind the
  * cwrap entry points the rest of the runtime modules call.
  *
  * Each binding is typed `T | Promise<T>`: ASYNCIFY-enabled wasm exports
@@ -53,9 +53,9 @@ interface CwrapModule {
 }
 
 export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult> {
-  const indexURL = (config.indexURL ?? '/build/artifacts/wacl-tk-runtime').replace(/\/+$/, '');
-  const glueURL  = config.glueURL  ?? `${indexURL}/wacl-tk-runtime.js`;
-  const wasmURL  = config.wasmURL  ?? `${indexURL}/wacl-tk-runtime.wasm`;
+  const indexURL = (config.indexURL ?? '/build/artifacts/tcldide-runtime').replace(/\/+$/, '');
+  const glueURL  = config.glueURL  ?? `${indexURL}/tcldide-runtime.js`;
+  const wasmURL  = config.wasmURL  ?? `${indexURL}/tcldide-runtime.wasm`;
 
   const em = await createEmX11({
     canvas: config.canvas,
@@ -77,20 +77,20 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
    * zero-converts XIM bytes -- so a 4-byte emoji from XIM lands in
    * Tk text storage with wrong stride, blowing up on backspace.
    *
-   * See wacl-tk-runtime.c::wacl_push_key_text for the full rationale.
+   * See tcldide-runtime.c::tcldide_push_key_text for the full rationale.
    * The compatibility layer goes away when we move to Tcl/Tk 9.x. */
   const m = module as unknown as Record<string, unknown>;
-  if (typeof m._wacl_push_key_text === 'function') {
-    m._emx11_set_pending_key_text = m._wacl_push_key_text;
+  if (typeof m._tcldide_push_key_text === 'function') {
+    m._emx11_set_pending_key_text = m._tcldide_push_key_text;
   }
 
   const cwrap = (module as EmscriptenModule & CwrapModule).cwrap;
   const bindings: RuntimeBindings = {
-    c_eval:         cwrap('wacl_eval',         'number', ['string']) as RuntimeBindings['c_eval'],
-    c_result:       cwrap('wacl_result',       'string', [])         as RuntimeBindings['c_result'],
-    c_get_var:      cwrap('wacl_get_var',      'string', ['string']) as RuntimeBindings['c_get_var'],
-    c_set_var:      cwrap('wacl_set_var',      'string', ['string', 'string']) as RuntimeBindings['c_set_var'],
-    c_do_one_event: cwrap('wacl_do_one_event', 'number', [])         as RuntimeBindings['c_do_one_event'],
+    c_eval:         cwrap('tcldide_eval',         'number', ['string']) as RuntimeBindings['c_eval'],
+    c_result:       cwrap('tcldide_result',       'string', [])         as RuntimeBindings['c_result'],
+    c_get_var:      cwrap('tcldide_get_var',      'string', ['string']) as RuntimeBindings['c_get_var'],
+    c_set_var:      cwrap('tcldide_set_var',      'string', ['string', 'string']) as RuntimeBindings['c_set_var'],
+    c_do_one_event: cwrap('tcldide_do_one_event', 'number', [])         as RuntimeBindings['c_do_one_event'],
   };
 
   return {

@@ -15,11 +15,11 @@
  *     also handles BackSpace/Return/Arrow keysyms via the keysym path).
  */
 
-import { loadWaclTk } from '../../src/wacl-tk.js';
+import { loadTcldide } from '../../src/tcldide.js';
 
-const wacl = await loadWaclTk();
+const tcldide = await loadTcldide();
 
-wacl.runTcl(`
+tcldide.runTcl(`
   label .title -text {Tk entry — XIM smoke test} -font {Helvetica 13 bold} -pady 6
   pack  .title -fill x
 
@@ -47,6 +47,6 @@ wacl.runTcl(`
   focus .row.e
 `);
 
-console.log(`tk-entry: Tcl ${wacl.version} / Tk ${wacl.tkVersion} ready`);
+console.log(`tk-entry: Tcl ${tcldide.version} / Tk ${tcldide.tkVersion} ready`);
 
-(window as any).wacl = wacl;
+(window as any).tcldide = tcldide;

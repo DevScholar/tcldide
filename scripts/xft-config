@@ -7,7 +7,7 @@
 # em-x11 paths so configure picks up our X11/Xft/Xft.h, fontconfig.h,
 # and the libemx11 archive that hosts every Xft / Fc symbol.
 #
-# EMX11_INCLUDES / EMX11_LIBDIR are exported by wacl-tk's Makefile before
+# EMX11_INCLUDES / EMX11_LIBDIR are exported by tcldide's Makefile before
 # this script is invoked.
 
 set -e

@@ -1,14 +1,14 @@
 /**
- * tk-hello demo: drive the wacl-tk runtime from JavaScript using the
+ * tk-hello demo: drive the tcldide runtime from JavaScript using the
  * Pyodide-style API. The Tcl script lives here in JS rather than being
  * baked into a per-demo C wasm.
  */
 
-import { loadWaclTk } from '../../src/wacl-tk.js';
+import { loadTcldide } from '../../src/tcldide.js';
 
-const wacl = await loadWaclTk();
+const tcldide = await loadTcldide();
 
-wacl.runTcl(`
+tcldide.runTcl(`
   label .title -text {Tk on WebAssembly} -font {Helvetica 14 bold} -pady 6
   pack  .title -fill x
   frame .sep -height 2 -relief sunken -bd 1
@@ -49,6 +49,6 @@ wacl.runTcl(`
   set ::clicks 0
 `);
 
-console.log(`tk-hello: Tcl ${wacl.version} / Tk ${wacl.tkVersion} ready`);
+console.log(`tk-hello: Tcl ${tcldide.version} / Tk ${tcldide.tkVersion} ready`);
 
-(window as any).wacl = wacl;
+(window as any).tcldide = tcldide;

@@ -1,5 +1,5 @@
 
-define('tcl/wacl', function () {
+define('tcl/tcldide', function () {
   var _Interp = null;
   var _getInterp = null;
   var _eval = null;
@@ -26,15 +26,15 @@ define('tcl/wacl', function () {
       wasmXHR.onerror = function() { reject('error '  + wasmXHR.status); }
       wasmXHR.send(null);
     });
-  })( _currPath + 'wacl.wasm');
+  })( _currPath + 'tcldide.wasm');
   
   var Module;
   if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
   
   Module['noInitialRun'] = false;
   Module['noExitRuntime'] = true;
-  Module['print'] = function(txt) { console.log('wacl stdout: ' + txt); };
-  Module['printErr'] = function(txt) { console.error('wacl stderr: ' + txt); };
+  Module['print'] = function(txt) { console.log('tcldide stdout: ' + txt); };
+  Module['printErr'] = function(txt) { console.error('tcldide stderr: ' + txt); };
   Module['filePackagePrefixURL'] = _currPath;
   Module['locateFile'] = function(path) { return _currPath + path; };
   
@@ -51,7 +51,7 @@ define('tcl/wacl', function () {
   };
   
   Module['postRun'] = function () {
-    _getInterp = Module.cwrap('Wacl_GetInterp', 'number', []);
+    _getInterp = Module.cwrap('Tcldide_GetInterp', 'number', []);
     _eval = Module.cwrap('Tcl_Eval', 'number', ['number', 'string']);
     _getStringResult = Module.cwrap('Tcl_GetStringResult', 'string', ['number']);
     _Interp = _getInterp();
@@ -86,7 +86,7 @@ define('tcl/wacl', function () {
         var argTypes = argType ? argType.split(/\s+/) : [];
         for (var i = 0; i < argTypes.length; i++) sig += (typeMap[argTypes[i]] || 'i');
         var fnPtr = Module.addFunction(fcn, sig);
-        return "::wacl::jscall " + fnPtr + " " + returnType + " " + argType;
+        return "::tcldide::jscall " + fnPtr + " " + returnType + " " + argType;
       },
      
       Eval: function(tclStr) {

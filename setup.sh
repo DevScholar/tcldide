@@ -31,10 +31,10 @@ fi
 # all in configure flags; see Makefile config target)
 # ---------------------------------------------------------------------------
 if [ -d tcl/unix ]; then
-    echo "tcl/ already present — skipping waclprep."
+    echo "tcl/ already present — skipping tcldideprep."
 else
     echo "==> Downloading and preparing Tcl $TCLVERSION ..."
-    make waclprep
+    make tcldideprep
 fi
 
 # ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ Source trees ready. Build sequence:
 
   # Build Tcl static archive
   make config
-  make waclinstall
+  make tcldideinstall
 
   # Build Tk static archive (needs em-x11 headers at ../em-x11/native/include)
   make tkinstall

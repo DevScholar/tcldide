@@ -24,7 +24,7 @@
       wasmXHR.onerror = function() { reject('error '  + wasmXHR.status); }
       wasmXHR.send(null);
     });
-  })('wacl/wacl.wasm');
+  })('tcldide/tcldide.wasm');
   
   var Module;
   if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
@@ -32,9 +32,9 @@
   Module['preRun'] = [];
   Module['noInitialRun'] = false;
   Module['noExitRuntime'] = true;
-  Module['print'] = function(txt) { console.log('wacl stdout: ' + txt); };
-  Module['printErr'] = function(txt) { console.error('wacl stderr: ' + txt); };
-  Module['filePackagePrefixURL'] = 'wacl/';
+  Module['print'] = function(txt) { console.log('tcldide stdout: ' + txt); };
+  Module['printErr'] = function(txt) { console.error('tcldide stderr: ' + txt); };
+  Module['filePackagePrefixURL'] = 'tcldide/';
   Module['instantiateWasm'] = function(imports, successCallback) {
     _wasmbly.then(function(wasmBinary) {
       var wasmInstantiate = WebAssembly.instantiate(new Uint8Array(wasmBinary), imports).then(function(output) {
@@ -48,7 +48,7 @@
   };
   
   Module['postRun'] = function () {
-    _getInterp = Module.cwrap('Wacl_GetInterp', 'number', []);
+    _getInterp = Module.cwrap('Tcldide_GetInterp', 'number', []);
     _eval = Module.cwrap('Tcl_Eval', 'number', ['number', 'string']);
     _getStringResult = Module.cwrap('Tcl_GetStringResult', 'string', ['number']);
     _Interp = _getInterp();
@@ -81,7 +81,7 @@
         // Back-compat: single-argument form, argType is a string.
         if (typeof argType === 'string') {
           var fnPtr = Runtime.addFunction(fcn);
-          return "::wacl::jscall " + fnPtr + " " + returnType + " " + argType;
+          return "::tcldide::jscall " + fnPtr + " " + returnType + " " + argType;
         }
 
         // Multi-argument form: argType is an array of type names. Wrap fcn
@@ -106,7 +106,7 @@
           return fcn.apply(null, args);
         };
         var fnPtr = Runtime.addFunction(wrapper);
-        return "::wacl::jscall " + fnPtr + " " + returnType + " string";
+        return "::tcldide::jscall " + fnPtr + " " + returnType + " string";
       },
 
       // Tcl-list parser: splits a Tcl list string into an array of elements,

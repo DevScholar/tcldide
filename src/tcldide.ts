@@ -1,19 +1,19 @@
 /**
- * wacl-tk: Pyodide-style JavaScript API for the Tcl/Tk WebAssembly
+ * tcldide: Pyodide-style JavaScript API for the Tcl/Tk WebAssembly
  * runtime. Mirrors the loadPyodide() shape so users coming from
  * Pyodide can pick this up without re-learning anything.
  *
- *   import { loadWaclTk } from './wacl-tk.js';
+ *   import { loadTcldide } from './tcldide.js';
  *
- *   const wacl = await loadWaclTk();
- *   wacl.runTcl(`
+ *   const tcldide = await loadTcldide();
+ *   tcldide.runTcl(`
  *     button .b -text Click -command { incr ::n }
  *     pack .b
  *   `);
- *   console.log(wacl.globals.get('tcl_version'));
+ *   console.log(tcldide.globals.get('tcl_version'));
  *
  * The runtime under the hood is a single wasm built from runtime/
- * (`wacl-tk-runtime.{js,wasm,data}`) that links Tcl, Tk, and em-x11
+ * (`tcldide-runtime.{js,wasm,data}`) that links Tcl, Tk, and em-x11
  * statically. createEmX11 wires up the host facade on
  * `globalThis.emX11` and paints Tk's X11 calls into a <canvas>. By
  * default we create that canvas inside document.body; the host page
@@ -35,22 +35,22 @@ import { launchRuntime } from './runtime/launch.js';
 import { AsyncifyQueue } from './runtime/asyncify-queue.js';
 import { startEventPump } from './runtime/event-pump.js';
 import { makeEval } from './runtime/eval.js';
-import { makeGlobals, type WaclTkGlobals } from './runtime/globals.js';
-import { makeCanvas, type WaclTkCanvas } from './runtime/canvas.js';
+import { makeGlobals, type TcldideGlobals } from './runtime/globals.js';
+import { makeCanvas, type TcldideCanvas } from './runtime/canvas.js';
 
 export { TclError } from './errors.js';
-export type { WaclTkGlobals } from './runtime/globals.js';
-export type { WaclTkCanvas } from './runtime/canvas.js';
+export type { TcldideGlobals } from './runtime/globals.js';
+export type { TcldideCanvas } from './runtime/canvas.js';
 
 /* ---------------- Public types ---------------- */
 
-export interface WaclTkConfig {
-  /** Base URL where wacl-tk-runtime.{js,wasm,data} live. Default:
-   *  `/build/artifacts/wacl-tk-runtime`. */
+export interface TcldideConfig {
+  /** Base URL where tcldide-runtime.{js,wasm,data} live. Default:
+   *  `/build/artifacts/tcldide-runtime`. */
   indexURL?: string;
-  /** Override the URL of the .js glue. Default: `${indexURL}/wacl-tk-runtime.js`. */
+  /** Override the URL of the .js glue. Default: `${indexURL}/tcldide-runtime.js`. */
   glueURL?: string;
-  /** Override the URL of the .wasm. Default: `${indexURL}/wacl-tk-runtime.wasm`. */
+  /** Override the URL of the .wasm. Default: `${indexURL}/tcldide-runtime.wasm`. */
   wasmURL?: string;
   /** Existing <canvas> for Tk to paint into. If omitted, a 1024x768
    *  canvas is created and appended to document.body. */
@@ -66,7 +66,7 @@ export interface WaclTkConfig {
   stderr?: (msg: string) => void;
 }
 
-export interface WaclTkAPI {
+export interface TcldideAPI {
   /** Tcl runtime version (e.g. `"8.6"`). */
   readonly version: string;
   /** Tk runtime version (e.g. `"8.6"`). */
@@ -87,10 +87,10 @@ export interface WaclTkAPI {
   runTclAsync(code: string): Promise<string>;
 
   /** Tcl global namespace, mirroring `pyodide.globals`. */
-  readonly globals: WaclTkGlobals;
+  readonly globals: TcldideGlobals;
 
   /** Canvas plumbing, mirroring `pyodide.canvas`. */
-  readonly canvas: WaclTkCanvas;
+  readonly canvas: TcldideCanvas;
 
   /** Override stdout. */
   setStdout(opts: { batched: (msg: string) => void }): void;
@@ -100,7 +100,7 @@ export interface WaclTkAPI {
 
 /* ---------------- Composer ---------------- */
 
-export async function loadWaclTk(config: WaclTkConfig = {}): Promise<WaclTkAPI> {
+export async function loadTcldide(config: TcldideConfig = {}): Promise<TcldideAPI> {
   /* Mutable slots so setStdout/setStderr can swap them after launch.
    * launchRuntime passes thunks into createEmX11 that read these via
    * closures, so reassignment takes effect on the next print. */

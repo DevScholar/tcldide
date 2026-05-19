@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
-project(wacl-tk-demos C)
+project(tcldide-demos C)
 
 # Enforce Emscripten toolchain -- mirrors em-x11's check so running bare cmake
 # fails loudly instead of producing a nonsensical native build.
 if(NOT EMSCRIPTEN)
     message(FATAL_ERROR
-        "wacl-tk-demos must be configured through emcmake. "
+        "tcldide-demos must be configured through emcmake. "
         "From inside WSL / Linux: emcmake cmake -S . -B build")
 endif()
 
@@ -19,6 +19,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts")
 
-set(WACL_TK_WARN_FLAGS -Wall -Wextra -Wno-unused-parameter)
+set(TCLDIDE_WARN_FLAGS -Wall -Wextra -Wno-unused-parameter)
 
 add_subdirectory(runtime)
