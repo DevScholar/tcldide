@@ -65,7 +65,7 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
     stderr: config.stderr,
   });
 
-  const proc = em.spawn(glueURL, { wasmUrl: wasmURL });
+  const proc = em.child_process.spawn(glueURL, { wasmUrl: wasmURL });
   await proc.ready;
   const module = await proc.module;
 
