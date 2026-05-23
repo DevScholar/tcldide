@@ -72,7 +72,7 @@ pack $f.mb -padx 14 -pady 4 -anchor w
 # Tab 2 — Text & Entry
 # ====================================================================
 set f [frame .nb.text]
-.nb add $f -text "Text && Entry"
+.nb add $f -text "Text & Entry"
 
 # Label
 label $f.h1 -text "Label" -font {Helvetica 10 bold}
@@ -131,55 +131,99 @@ pack $f.txt -padx 14 -pady 2
 set f [frame .nb.select]
 .nb add $f -text "Selection"
 
-# Listbox
-label $f.h1 -text "Listbox" -font {Helvetica 10 bold}
-pack $f.h1 -padx 14 -pady {10 2} -anchor w
+# --- Left panel: scrollable widget list ---
+frame $f.left -width 340
+pack $f.left -side left -fill both -expand 1
 
-frame $f.lr
-listbox $f.lr.lb -width 18 -height 6 -exportselection 0
+canvas $f.left.c -yscrollcommand "$f.left.sb set" -width 320 -highlightthickness 0
+scrollbar $f.left.sb -command "$f.left.c yview"
+pack $f.left.sb -side right -fill y
+pack $f.left.c -side left -fill both -expand 1
+
+set inner [frame $f.left.c.inner]
+$f.left.c create window 0 0 -window $inner -anchor nw -tags inner
+bind $inner <Configure> "$f.left.c configure -scrollregion \[$f.left.c bbox inner\]"
+
+# Listbox
+label $inner.h1 -text "Listbox" -font {Helvetica 10 bold}
+pack $inner.h1 -padx 10 -pady {8 2} -anchor w
+
+frame $inner.lr
+listbox $inner.lr.lb -width 18 -height 6 -exportselection 0
 foreach item {Apple Banana Cherry Date Elderberry Fig Grape Kiwi} {
-    $f.lr.lb insert end $item
+    $inner.lr.lb insert end $item
 }
-$f.lr.lb selection set 0
-scrollbar $f.lr.sb -command "$f.lr.lb yview"
-$f.lr.lb configure -yscrollcommand "$f.lr.sb set"
-pack $f.lr.lb $f.lr.sb -side left -fill y
-pack $f.lr -padx 14 -anchor w
+$inner.lr.lb selection set 0
+scrollbar $inner.lr.sb -command "$inner.lr.lb yview"
+$inner.lr.lb configure -yscrollcommand "$inner.lr.sb set"
+pack $inner.lr.lb $inner.lr.sb -side left -fill y
+pack $inner.lr -padx 10 -anchor w
 
 # Combobox
-label $f.h2 -text "Combobox (ttk)" -font {Helvetica 10 bold}
-pack $f.h2 -padx 14 -pady {14 2} -anchor w
+label $inner.h2 -text "Combobox (ttk)" -font {Helvetica 10 bold}
+pack $inner.h2 -padx 10 -pady {12 2} -anchor w
 
-ttk::combobox $f.cb -values {One Two Three Four Five Six} -state readonly -width 16
-$f.cb current 0
-pack $f.cb -padx 14 -anchor w
+ttk::combobox $inner.cb -values {One Two Three Four Five Six} -state readonly -width 16
+$inner.cb current 0
+pack $inner.cb -padx 10 -anchor w
 
 # Scale
-label $f.h3 -text "Scale" -font {Helvetica 10 bold}
-pack $f.h3 -padx 14 -pady {14 2} -anchor w
+label $inner.h3 -text "Scale" -font {Helvetica 10 bold}
+pack $inner.h3 -padx 10 -pady {12 2} -anchor w
 
-frame $f.scr
+frame $inner.scr
 set ::scl 50
-scale $f.scr.sc -from 0 -to 100 -orient horizontal -length 240 \
+scale $inner.scr.sc -from 0 -to 100 -orient horizontal -length 240 \
     -variable ::scl -showvalue 1
-pack $f.scr.sc -side left
-pack $f.scr -padx 14 -anchor w
+pack $inner.scr.sc -side left
+pack $inner.scr -padx 10 -anchor w
 
 # Progressbar
-label $f.h4 -text "Progressbar (ttk)" -font {Helvetica 10 bold}
-pack $f.h4 -padx 14 -pady {14 2} -anchor w
+label $inner.h4 -text "Progressbar (ttk)" -font {Helvetica 10 bold}
+pack $inner.h4 -padx 10 -pady {12 2} -anchor w
 
 set ::pval 70
-ttk::progressbar $f.pb -length 260 -mode determinate -variable ::pval
-pack $f.pb -padx 14 -anchor w -pady 2
+ttk::progressbar $inner.pb -length 260 -mode determinate -variable ::pval
+pack $inner.pb -padx 10 -anchor w -pady 2
 
-frame $f.pctl
-button $f.pctl.b1 -text " -10 " -command {if {$::pval >= 10} {incr ::pval -10}}
-button $f.pctl.b2 -text " +10 " -command {if {$::pval <= 90} {incr ::pval 10}}
-button $f.pctl.b3 -text "  0  " -command {set ::pval 0}
-button $f.pctl.b4 -text " 100 " -command {set ::pval 100}
-pack $f.pctl.b1 $f.pctl.b2 $f.pctl.b3 $f.pctl.b4 -side left -padx 2
-pack $f.pctl -padx 14 -anchor w -pady 4
+frame $inner.pctl
+button $inner.pctl.b1 -text " -10 " -command {if {$::pval >= 10} {incr ::pval -10}}
+button $inner.pctl.b2 -text " +10 " -command {if {$::pval <= 90} {incr ::pval 10}}
+button $inner.pctl.b3 -text "  0  " -command {set ::pval 0}
+button $inner.pctl.b4 -text " 100 " -command {set ::pval 100}
+pack $inner.pctl.b1 $inner.pctl.b2 $inner.pctl.b3 $inner.pctl.b4 -side left -padx 2
+pack $inner.pctl -padx 10 -anchor w -pady 4
+
+# --- Right panel: Treeview ---
+frame $f.right
+pack $f.right -side left -fill both -expand 1 -padx {4 0}
+
+label $f.right.h -text "Treeview (ttk)" -font {Helvetica 10 bold}
+pack $f.right.h -pady {8 2} -anchor w
+
+ttk::treeview $f.right.tv -columns {size kind} -show headings -height 16
+$f.right.tv heading #0 -text "Name"
+$f.right.tv heading size -text "Size"
+$f.right.tv heading kind -text "Kind"
+$f.right.tv column #0 -width 150
+$f.right.tv column size -width 60 -anchor e
+$f.right.tv column kind -width 70 -anchor center
+
+set root [$f.right.tv insert {} end -text "project/" -values {-- folder} -open 1]
+set src  [$f.right.tv insert $root end -text "src/" -values {-- folder}]
+$f.right.tv insert $src  end -text "main.tcl" -values {3.2K file}
+$f.right.tv insert $src  end -text "utils.tcl" -values {1.8K file}
+set img  [$f.right.tv insert $root end -text "img/" -values {-- folder}]
+$f.right.tv insert $img  end -text "logo.png" -values {24K image}
+$f.right.tv insert $img  end -text "icon.gif" -values {8K image}
+$f.right.tv insert $root end -text "README.md" -values {1.5K doc}
+$f.right.tv insert $root end -text "Makefile" -values {0.6K build}
+
+scrollbar $f.right.sb -command "$f.right.tv yview"
+$f.right.tv configure -yscrollcommand "$f.right.sb set"
+pack $f.right.tv -side left -fill both -expand 1
+pack $f.right.sb -side right -fill y
+pack $f.right.h
 
 # ====================================================================
 # Tab 4 — Containers
@@ -260,7 +304,7 @@ pack $f.c -padx 14 -pady 4
 # Status bar
 # ====================================================================
 frame .status -relief sunken -bd 1 -height 24
-label .status.l -text " Tk [package require Tk]  |  ttk notebook  |  tcldide runtime" \
+label .status.l -text " Tk [package require Tk]  |  tcldide runtime" \
     -anchor w -pady 2
 pack .status.l -fill x
 pack .status -fill x -padx 8 -pady 6
