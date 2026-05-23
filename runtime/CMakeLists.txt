@@ -89,9 +89,9 @@ target_include_directories(tcldide-runtime PRIVATE
 )
 
 target_link_libraries(tcldide-runtime PRIVATE
+    ${EMX11_ARCHIVES}
     "${TK_ARCHIVE}"
     "${TCL_ARCHIVE}"
-    ${EMX11_ARCHIVES}
 )
 
 target_compile_options(tcldide-runtime PRIVATE ${TCLDIDE_WARN_FLAGS})
