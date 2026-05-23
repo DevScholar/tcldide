@@ -31,7 +31,7 @@ export interface RuntimeBindings {
   c_result(): string;
   c_get_var(name: string): string | null;
   c_set_var(name: string, value: string): string | null;
-  c_do_one_event(): number | Promise<number>;
+  c_do_one_event(): Promise<number>;
 }
 
 export interface LaunchResult {
@@ -90,7 +90,14 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
     c_result:       cwrap('tcldide_result',       'string', [])         as RuntimeBindings['c_result'],
     c_get_var:      cwrap('tcldide_get_var',      'string', ['string']) as RuntimeBindings['c_get_var'],
     c_set_var:      cwrap('tcldide_set_var',      'string', ['string', 'string']) as RuntimeBindings['c_set_var'],
-    c_do_one_event: cwrap('tcldide_do_one_event', 'number', [])         as RuntimeBindings['c_do_one_event'],
+    /* {async:true} — tcldide_do_one_event is an Asyncify export. Even when
+     * no events are pending and it returns synchronously, recent Emscripten
+     * asserts unless the cwrap declares async. The eval module's runTcl
+     * parks the returned Promise on the queue so idle drains don't race
+     * subsequent calls. */
+    c_do_one_event: (cwrap as (name: string, ret: string | null, args: string[], opts?: { async?: boolean }) => unknown)(
+      'tcldide_do_one_event', 'number', [], { async: true },
+    ) as RuntimeBindings['c_do_one_event'],
   };
 
   return {

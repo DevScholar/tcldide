@@ -29,8 +29,7 @@ export function startEventPump(
     void queue.enqueue(async () => {
       const deadline = performance.now() + TICK_BUDGET_MS;
       while (true) {
-        const r = bindings.c_do_one_event();
-        const n = r instanceof Promise ? await r : r;
+        const n = await bindings.c_do_one_event();
         if (n === 0 || performance.now() >= deadline) return;
       }
     });

@@ -50,9 +50,10 @@ export function makeEval(bindings: RuntimeBindings, queue: AsyncifyQueue): EvalA
     if (rc !== 0) throw new TclError(result);
     /* Drain pending idle handlers and paint events right away.
      * Without this, the result of a `pack` / `wm geometry` chain only
-     * paints on the next requestAnimationFrame tick (~16ms later). */
-    const drained = bindings.c_do_one_event();
-    if (drained instanceof Promise) queue.park(drained);
+     * paints on the next requestAnimationFrame tick (~16ms later).
+     * c_do_one_event is cwrap'd with {async:true} so it always returns
+     * a Promise; park it so the drain doesn't race the next call. */
+    queue.park(bindings.c_do_one_event());
     return result;
   };
 
