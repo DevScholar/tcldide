@@ -30,7 +30,7 @@ set(EMX11_ARCHIVES
 )
 
 # em-x11's JS bridges are now embedded in libX11.a via EM_JS (see
-# em-x11/native/src/bridges.c). No --js-library wiring needed: the
+# em-x11/native/emx11/bridges.c). No --js-library wiring needed: the
 # archive carries its own __em_js__* data symbols that emcc's post-link
 # pass picks up. Keep the prereq guards on the X11 archive itself --
 # the rest are built alongside it from the same configure step.
@@ -61,8 +61,13 @@ endif()
 # "fix doesn't take effect" bugs (compare project_pyodide_tk_stage_assets
 # memory: same shape on the pyodide-tk side, solved differently).
 file(GLOB_RECURSE EMX11_SRC CONFIGURE_DEPENDS
-    "${EMX11_DIR}/native/src/*.c"
-    "${EMX11_DIR}/native/src/*.h"
+    "${EMX11_DIR}/native/dix/*.c"
+    "${EMX11_DIR}/native/emx11/*.c"
+    "${EMX11_DIR}/native/emx11/*.h"
+    "${EMX11_DIR}/native/Xext/*.c"
+    "${EMX11_DIR}/native/render/*.c"
+    "${EMX11_DIR}/native/xkb/*.c"
+    "${EMX11_DIR}/native/glx/*.c"
     "${EMX11_DIR}/native/include/*.h"
 )
 add_custom_command(
