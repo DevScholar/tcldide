@@ -304,7 +304,7 @@ pack $f.c -padx 14 -pady 4
 # Status bar
 # ====================================================================
 frame .status -relief sunken -bd 1 -height 24
-label .status.l -text " Tk [package require Tk]  |  tcldide runtime" \
+label .status.l -text " Tk [package require Tk]  |  $tcl_platform(os) $tcl_platform(machine)" \
     -anchor w -pady 2
 pack .status.l -fill x
 pack .status -fill x -padx 8 -pady 6
