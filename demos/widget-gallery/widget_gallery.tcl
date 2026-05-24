@@ -201,7 +201,7 @@ pack $f.right -side left -fill both -expand 1 -padx {4 0}
 label $f.right.h -text "Treeview (ttk)" -font {Helvetica 10 bold}
 pack $f.right.h -pady {8 2} -anchor w
 
-ttk::treeview $f.right.tv -columns {size kind} -show headings -height 16
+ttk::treeview $f.right.tv -columns {size kind} -show {tree headings} -height 16
 $f.right.tv heading #0 -text "Name"
 $f.right.tv heading size -text "Size"
 $f.right.tv heading kind -text "Kind"
