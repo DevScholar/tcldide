@@ -14,26 +14,20 @@ set(TK_LIBRARY_DIR  "${CMAKE_SOURCE_DIR}/tk/library")
 set(EMX11_DIR        "${CMAKE_SOURCE_DIR}/../em-x11")
 set(EMX11_BUILD_DIR  "${EMX11_DIR}/build")
 set(EMX11_LIB_DIR    "${EMX11_BUILD_DIR}/artifacts")
-set(EMX11_INCLUDE    "${EMX11_DIR}/native/include")
 
-# em-x11 used to ship one fat libemx11.a; it's now split the same way a
-# real X system ships -- libX11.a / libXext.a / libXrender.a /
-# libfontconfig.a / libXft.a -- so we link against the standard set.
-# Tk uses Xft (for sub-pixel font rendering), which transitively pulls
-# in libXrender + libfontconfig + libX11. GLX is unused on the Tk side.
-set(EMX11_ARCHIVES
-    "${EMX11_LIB_DIR}/libXft.a"
-    "${EMX11_LIB_DIR}/libXrender.a"
-    "${EMX11_LIB_DIR}/libfontconfig.a"
-    "${EMX11_LIB_DIR}/libXext.a"
-    "${EMX11_LIB_DIR}/libX11.a"
-)
+# em-x11 linking goes through the emscripten-ports script at
+# tools/ports/emx11.py. It returns the full archive paths to emcc,
+# bypassing emscripten's -lX11 -> libxlib.js hijack, and provides
+# include paths via process_args(). The port finds pre-built archives
+# in build/artifacts/; the add_custom_command below ensures they're
+# ready before tcldide-runtime links.
+set(_port_script "${EMX11_DIR}/tools/ports/emx11.py")
 
-# em-x11's JS bridges are now embedded in libX11.a via EM_JS (see
-# em-x11/native/emx11/bridges.c). No --js-library wiring needed: the
-# archive carries its own __em_js__* data symbols that emcc's post-link
-# pass picks up. Keep the prereq guards on the X11 archive itself --
-# the rest are built alongside it from the same configure step.
+# em-x11's JS bridges are embedded in libX11.a via EM_JS (see
+# em-x11/native/emx11/bridges.c). The port script returns the full
+# archive paths; emcc's post-link pass picks up the __em_js__* data
+# symbols automatically. The prereq guard checks for em-x11's cmake
+# configure marker — the add_custom_command above builds everything.
 
 if(NOT EXISTS "${TCL_ARCHIVE}" OR NOT EXISTS "${TK_ARCHIVE}")
     message(STATUS "tcldide-runtime: skipping -- ${TCL_ARCHIVE} or ${TK_ARCHIVE} missing.")
@@ -71,15 +65,13 @@ file(GLOB_RECURSE EMX11_SRC CONFIGURE_DEPENDS
     "${EMX11_DIR}/native/include/*.h"
 )
 add_custom_command(
-    OUTPUT ${EMX11_ARCHIVES}
+    OUTPUT "${EMX11_LIB_DIR}/libX11.a"
     COMMAND ${CMAKE_COMMAND} --build "${EMX11_BUILD_DIR}"
-            --target X11 --target Xext --target Xrender
-            --target fontconfig --target Xft
     DEPENDS ${EMX11_SRC}
-    COMMENT "Building em-x11 static archives (X11/Xext/Xrender/fontconfig/Xft)"
+    COMMENT "Building em-x11 (port finds archives in ${EMX11_LIB_DIR})"
     VERBATIM
 )
-add_custom_target(emx11_static_build DEPENDS ${EMX11_ARCHIVES})
+add_custom_target(emx11_static_build DEPENDS "${EMX11_LIB_DIR}/libX11.a")
 
 add_executable(tcldide-runtime
     tcldide-runtime.c
@@ -90,18 +82,20 @@ add_dependencies(tcldide-runtime emx11_static_build)
 target_include_directories(tcldide-runtime PRIVATE
     "${TCLDIDE_DIR}/include"
     "${TCLDIDE_DIR}/include/tk"
-    "${EMX11_INCLUDE}"
 )
 
 target_link_libraries(tcldide-runtime PRIVATE
-    ${EMX11_ARCHIVES}
     "${TK_ARCHIVE}"
     "${TCL_ARCHIVE}"
 )
 
-target_compile_options(tcldide-runtime PRIVATE ${TCLDIDE_WARN_FLAGS})
+target_compile_options(tcldide-runtime PRIVATE
+    ${TCLDIDE_WARN_FLAGS}
+    "SHELL:--use-port=${_port_script}"
+)
 
 target_link_options(tcldide-runtime PRIVATE
+    "SHELL:--use-port=${_port_script}"
     "SHELL:-s MODULARIZE=1"
     "SHELL:-s EXPORT_ES6=1"
     "SHELL:-s EXPORT_NAME=createTcldideRuntime"

@@ -107,8 +107,9 @@ Same em-x11 redirection trick the project has always used: real
 Tk's unresolved X11 symbols stay in the static archive and are
 filled at the runtime link step by em-x11's split archives —
 `libX11.a`, `libXext.a`, `libXrender.a`, `libfontconfig.a`,
-`libXft.a` (see `tcldide/runtime/CMakeLists.txt`'s
-`EMX11_ARCHIVES`; GLX is not used by Tk).
+`libXft.a` (the emscripten-ports script at
+`tools/ports/emx11.py` returns the full archive list; GLX is
+not used by Tk).
 
 - `ac_cv_lib_Xft_XftFontOpen=yes` and
   `ac_cv_lib_fontconfig_FcFontSort=no` short-circuit Tk's optional
@@ -123,9 +124,10 @@ Post-configure sed:
 
 ### Install
 `make tkinstall` deliberately skips Tk's `install-binaries` target,
-which would build `wish` and require linking against `libemx11`
-at this stage. `wish` only makes sense in a page that has a Canvas
-attached, so it is built at the demo / runtime layer instead.
+which would build `wish` and require linking against em-x11's
+archives at this stage. `wish` only makes sense in a page that has
+a Canvas attached, so it is built at the demo / runtime layer
+instead.
 
 ## `::tcldide::*` Tcl commands
 
