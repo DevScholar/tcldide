@@ -11,6 +11,7 @@
   },
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "postinstall": "bash setup.sh",
     "build": "pnpm run build:native && pnpm run build:web",
     "build:native": "emcmake cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j",
     "build:native:debug": "emcmake cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j",

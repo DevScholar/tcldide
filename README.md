@@ -14,16 +14,17 @@ Built on top of [Wacl](https://github.com/ecky-l/wacl); Tk's X11 calls are handl
 - Emscripten (latest emsdk recommended; `emcc` must be on `PATH`)
 - Node.js ≥ 20, pnpm ≥ 9
 - make, autoconf, wget
-- [em-x11](https://github.com/DevScholar/em-x11) cloned as a sibling directory
+- [em-x11](https://github.com/DevScholar/em-x11) cloned as a sibling directory and built (`pnpm install && pnpm build:native`)
+
+# Quick start
 
 ```bash
-bash setup.sh
-cd ../em-x11 && pnpm install && pnpm build:native && cd ../tcldide
-make config && make tcldideinstall
-make tkinstall
-pnpm install
-pnpm build:native
+pnpm install        # downloads Tcl/Tk sources, builds static archives
+pnpm build:native   # compiles tcldide-runtime.wasm
+pnpm dev            # starts Vite dev server
 ```
+
+`pnpm install` will detect whether em-x11 is present and built — if not, it prints instructions and exits.
 
 # Build
 
