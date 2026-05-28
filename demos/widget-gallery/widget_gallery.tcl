@@ -301,6 +301,112 @@ $f.c create text 380 40 -text "Canvas\nText" -fill #e67e22 \
 pack $f.c -padx 14 -pady 4
 
 # ====================================================================
+# Tab 6 — Common Dialogs
+# ====================================================================
+set f [frame .nb.dialogs]
+.nb add $f -text "Common Dialogs"
+
+# --- Message Box ---
+label $f.h1 -text "Message Box" -font {Helvetica 10 bold}
+pack $f.h1 -padx 14 -pady {10 2} -anchor w
+
+frame $f.mbrow1
+button $f.mbrow1.b1 -text "Info" -command {
+    set ::msgresult [tk_messageBox -icon info -type ok -title "Information" \
+        -message "This is an info message box.\nPress OK to continue."]
+    puts "MessageBox returned: $::msgresult"
+}
+button $f.mbrow1.b2 -text "Error" -command {
+    set ::msgresult [tk_messageBox -icon error -type ok -title "Error" \
+        -message "Something went wrong!\nPlease try again."]
+    puts "MessageBox returned: $::msgresult"
+}
+button $f.mbrow1.b3 -text "Question" -command {
+    set ::msgresult [tk_messageBox -icon question -type yesno -title "Confirm" \
+        -message "Do you want to save changes before closing?"]
+    puts "MessageBox returned: $::msgresult"
+}
+button $f.mbrow1.b4 -text "Warning" -command {
+    set ::msgresult [tk_messageBox -icon warning -type okcancel -title "Warning" \
+        -message "This action cannot be undone.\nContinue?"]
+    puts "MessageBox returned: $::msgresult"
+}
+pack $f.mbrow1.b1 $f.mbrow1.b2 $f.mbrow1.b3 $f.mbrow1.b4 -side left -padx 3
+pack $f.mbrow1 -padx 14 -anchor w -pady 2
+
+set ::msgresult ""
+label $f.mbresult -textvariable ::msgresult -relief sunken -width 42 -anchor w -padx 6
+pack $f.mbresult -padx 14 -anchor w -pady {0 4}
+
+# --- File Dialogs ---
+label $f.h2 -text "File Dialogs" -font {Helvetica 10 bold}
+pack $f.h2 -padx 14 -pady {10 2} -anchor w
+
+frame $f.fdrow
+button $f.fdrow.b1 -text "Open File..." -command {
+    set types {
+        {"Text files" {.txt .md}}
+        {"Tcl Scripts" {.tcl}}
+        {"All files" *}
+    }
+    set ::filepath [tk_getOpenFile -filetypes $types -title "Open File"]
+    if {$::filepath ne ""} { puts "Selected file: $::filepath" }
+}
+button $f.fdrow.b2 -text "Save File..." -command {
+    set types {
+        {"Text files" {.txt .md}}
+        {"Tcl Scripts" {.tcl}}
+        {"All files" *}
+    }
+    set ::filepath [tk_getSaveFile -filetypes $types -title "Save File" \
+        -initialfile "untitled.txt" -defaultextension ".txt"]
+    if {$::filepath ne ""} { puts "Save path: $::filepath" }
+}
+pack $f.fdrow.b1 $f.fdrow.b2 -side left -padx 3
+pack $f.fdrow -padx 14 -anchor w
+
+set ::filepath ""
+label $f.fdresult -textvariable ::filepath -relief sunken -width 42 -anchor w -padx 6
+pack $f.fdresult -padx 14 -anchor w -pady {2 4}
+
+# --- Color Chooser ---
+label $f.h3 -text "Color Chooser" -font {Helvetica 10 bold}
+pack $f.h3 -padx 14 -pady {10 2} -anchor w
+
+frame $f.ccrow
+set ::selcolor #4a90d9
+canvas $f.ccrow.swatch -width 28 -height 22 -bg $::selcolor -relief solid -bd 1
+button $f.ccrow.b -text "Choose Color..." -command {
+    set c [tk_chooseColor -initialcolor $::selcolor -title "Choose a color"]
+    if {$c ne ""} {
+        set ::selcolor $c
+        $f.ccrow.swatch configure -bg $c
+        puts "Selected color: $c"
+    }
+}
+pack $f.ccrow.swatch $f.ccrow.b -side left -padx 3
+pack $f.ccrow -padx 14 -anchor w
+
+label $f.ccresult -textvariable ::selcolor -relief sunken -width 42 -anchor w -padx 6
+pack $f.ccresult -padx 14 -anchor w -pady {2 4}
+
+# --- Directory Chooser ---
+label $f.h4 -text "Directory Chooser" -font {Helvetica 10 bold}
+pack $f.h4 -padx 14 -pady {10 2} -anchor w
+
+frame $f.dcrow
+button $f.dcrow.b -text "Choose Directory..." -command {
+    set ::dirpath [tk_chooseDirectory -title "Select a directory" -mustexist 1]
+    if {$::dirpath ne ""} { puts "Selected directory: $::dirpath" }
+}
+pack $f.dcrow.b -side left -padx 3
+pack $f.dcrow -padx 14 -anchor w
+
+set ::dirpath ""
+label $f.dcresult -textvariable ::dirpath -relief sunken -width 42 -anchor w -padx 6
+pack $f.dcresult -padx 14 -anchor w -pady {2 4}
+
+# ====================================================================
 # Status bar
 # ====================================================================
 frame .status -relief sunken -bd 1 -height 24
