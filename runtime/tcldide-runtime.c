@@ -24,86 +24,7 @@
 #include <emscripten.h>
 
 extern int Tcldide_Init(Tcl_Interp *interp);
-
-#define MAX_FILE_HANDLERS 8
-typedef struct {
-    int fd;
-    int mask;
-    Tcl_FileProc *proc;
-    ClientData cd;
-    int in_use;
-} FileHandler;
-static FileHandler g_handlers[MAX_FILE_HANDLERS];
-
-static void track_CreateFileHandler(int fd, int mask, Tcl_FileProc *proc, ClientData cd) {
-    for (int i = 0; i < MAX_FILE_HANDLERS; i++) {
-        if (g_handlers[i].in_use && g_handlers[i].fd == fd) {
-            g_handlers[i].mask = mask;
-            g_handlers[i].proc = proc;
-            g_handlers[i].cd   = cd;
-            return;
-        }
-    }
-    for (int i = 0; i < MAX_FILE_HANDLERS; i++) {
-        if (!g_handlers[i].in_use) {
-            g_handlers[i].in_use = 1;
-            g_handlers[i].fd   = fd;
-            g_handlers[i].mask = mask;
-            g_handlers[i].proc = proc;
-            g_handlers[i].cd   = cd;
-            return;
-        }
-    }
-    fprintf(stderr, "tcldide: file handler table full (fd=%d dropped)\n", fd);
-}
-
-static void track_DeleteFileHandler(int fd) {
-    for (int i = 0; i < MAX_FILE_HANDLERS; i++) {
-        if (g_handlers[i].in_use && g_handlers[i].fd == fd) {
-            g_handlers[i].in_use = 0;
-            return;
-        }
-    }
-}
-
-static void  nop_SetTimer(const Tcl_Time *t)        { (void)t; }
-static void *nop_InitNotifier(void)                 { return (void *)1; }
-static void  nop_FinalizeNotifier(ClientData cd)    { (void)cd; }
-static void  nop_AlertNotifier(ClientData cd)       { (void)cd; }
-static void  nop_ServiceModeHook(int mode)          { (void)mode; }
-
-static int yield_WaitForEvent(const Tcl_Time *timePtr) {
-    /* timePtr == NULL means block-until-event; timePtr->{0,0} means
-     * poll. We must NOT yield to JS on the poll path: the JS loader
-     * polls every animation frame to keep Tk responsive, and yielding
-     * from inside a synchronous user runTcl() would let the JS-side
-     * pump re-enter wasm and corrupt Asyncify state. Drain the
-     * registered fd handlers either way -- that's how Tk's
-     * DisplayFileProc consumes em-x11 events without us ever sleeping. */
-    int polling = (timePtr && timePtr->sec == 0 && timePtr->usec == 0);
-    if (!polling) {
-        emscripten_sleep(1);
-    }
-    for (int i = 0; i < MAX_FILE_HANDLERS; i++) {
-        if (g_handlers[i].in_use && (g_handlers[i].mask & TCL_READABLE)) {
-            g_handlers[i].proc(g_handlers[i].cd, TCL_READABLE);
-        }
-    }
-    return 0;
-}
-
-static void install_browser_notifier(void) {
-    Tcl_NotifierProcs procs;
-    procs.setTimerProc           = nop_SetTimer;
-    procs.waitForEventProc       = yield_WaitForEvent;
-    procs.createFileHandlerProc  = track_CreateFileHandler;
-    procs.deleteFileHandlerProc  = track_DeleteFileHandler;
-    procs.initNotifierProc       = nop_InitNotifier;
-    procs.finalizeNotifierProc   = nop_FinalizeNotifier;
-    procs.alertNotifierProc      = nop_AlertNotifier;
-    procs.serviceModeHookProc    = nop_ServiceModeHook;
-    Tcl_SetNotifier(&procs);
-}
+extern void emx11_install_browser_notifier(void);
 
 /* --------------------------------------------------------------------- */
 
@@ -283,7 +204,7 @@ int tcldide_do_one_event(void) {
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
 
-    install_browser_notifier();
+    emx11_install_browser_notifier();
 
     setenv("TCL_LIBRARY", "/tcl", 1);
     setenv("TK_LIBRARY",  "/tk",  1);

@@ -9,6 +9,11 @@
 # prints install instructions and exits; the user installs it and re-runs.
 set -euo pipefail
 
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "ERROR: This project requires Linux. Run from WSL, not Git Bash or Windows."
+  exit 1
+fi
+
 TCLVERSION=${TCLVERSION:-8.6.15}
 TKVERSION=${TKVERSION:-8.6.15}
 

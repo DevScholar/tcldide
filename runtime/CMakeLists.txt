@@ -82,6 +82,7 @@ add_dependencies(tcldide-runtime emx11_static_build)
 target_include_directories(tcldide-runtime PRIVATE
     "${TCLDIDE_DIR}/include"
     "${TCLDIDE_DIR}/include/tk"
+    "${EMX11_DIR}/native/include"
 )
 
 target_link_libraries(tcldide-runtime PRIVATE
@@ -91,7 +92,6 @@ target_link_libraries(tcldide-runtime PRIVATE
 
 target_compile_options(tcldide-runtime PRIVATE
     ${TCLDIDE_WARN_FLAGS}
-    "SHELL:--use-port=${_port_script}"
 )
 
 target_link_options(tcldide-runtime PRIVATE
