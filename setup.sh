@@ -9,6 +9,18 @@
 # prints install instructions and exits; the user installs it and re-runs.
 set -euo pipefail
 
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ---------------------------------------------------------------------------
+# Reproducibility-test clone detection (runs on WSL and Git Bash alike)
+# ---------------------------------------------------------------------------
+if echo "$PROJECT_DIR" | grep -qi reproducibility; then
+    if [ -d .git ]; then
+        rm -rf .git
+        echo "[reproducibility] removed .git from $PROJECT_DIR — reproducibility-test clone"
+    fi
+fi
+
 if [ "$(uname -s)" != "Linux" ]; then
   echo "ERROR: This project requires Linux. Run from WSL, not Git Bash or Windows."
   exit 1
