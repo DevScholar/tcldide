@@ -97,11 +97,13 @@ tkprep:
 tkconfig:
 	@test -d "$(EMX11_INCLUDES)/X11" || \
 		(echo "em-x11 headers not found at $(EMX11_INCLUDES)/X11"; exit 1)
-	chmod +x scripts/xft-config
+	chmod +x scripts/xft-config 2>/dev/null || true
 	cd tk/unix && \
 		PATH="$(CURDIR)/scripts:$$PATH" \
 		EMX11_INCLUDES="$(EMX11_INCLUDES)" \
 		EMX11_LIBDIR="$(EMX11_LIBDIR)" \
+		XFT_CFLAGS="-I$(EMX11_INCLUDES)" \
+		XFT_LIBS="-L$(EMX11_LIBDIR) -lemx11" \
 		ac_cv_lib_Xft_XftFontOpen=yes \
 		ac_cv_lib_fontconfig_FcFontSort=no \
 		ac_cv_lib_X11_XkbKeycodeToKeysym=yes \

@@ -84,8 +84,22 @@ int tcldide_eval(const char *code) {
     if (!g_interp) { set_result("tcldide: interp not initialised"); return TCL_ERROR; }
     Tcl_DString ds;
     const char *cesu = to_cesu8(code, &ds);
-    int rc = Tcl_Eval(g_interp, cesu);
+
+    /* Normalise CRLF → LF so Tcl line continuation (backslash-newline)
+     * works on CRLF files from Windows git clones. Emscripten has no
+     * text-mode fopen, so `source` and `Tcl_Eval` both see raw bytes. */
+    Tcl_DString norm;
+    Tcl_DStringInit(&norm);
+    const char *s = cesu;
+    while (*s) {
+        if (*s == '\r' && *(s+1) == '\n') { s++; continue; }
+        Tcl_DStringAppend(&norm, s, 1);
+        s++;
+    }
     Tcl_DStringFree(&ds);
+
+    int rc = Tcl_Eval(g_interp, Tcl_DStringValue(&norm));
+    Tcl_DStringFree(&norm);
     if (rc == TCL_OK) {
         set_result(Tcl_GetStringResult(g_interp));
     } else {
@@ -211,6 +225,12 @@ int main(int argc, char **argv) {
     setenv("DISPLAY",     ":0",   1);
 
     Tcl_FindExecutable("tcldide-runtime");
+
+    /* Emscripten has no locale database; TclpSetInitialEncodings would
+     * fall back to iso8859-1. DEFAULT_ENV at link time + this call give
+     * us UTF-8 even if the env-var path is a no-op. */
+    Tcl_SetSystemEncoding(NULL, "utf-8");
+
     g_interp = Tcl_CreateInterp();
     if (!g_interp) {
         fprintf(stderr, "tcldide-runtime: Tcl_CreateInterp failed\n");
