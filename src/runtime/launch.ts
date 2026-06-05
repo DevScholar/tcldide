@@ -4,8 +4,8 @@
  *
  * Each binding is typed `T | Promise<T>`: ASYNCIFY-enabled wasm exports
  * return a sync value when the call doesn't suspend and a Promise when
- * it does. The async-queue layer (asyncify-queue.ts) decides what to
- * do with that distinction; we just type it honestly here.
+ * it does. In practice, emscripten_sleep in Worker uses Atomics.wait
+ * (truly blocking), so cwrap calls always return synchronously.
  */
 
 import { createEmX11, type EmX11 } from '../../../em-x11/src/index.js';

@@ -22,9 +22,8 @@
  *
  * This file is the public entry: it re-exports the user-facing types
  * and composes the small runtime modules under src/runtime/. Each
- * subsystem (boot, asyncify queue, event pump, eval, globals, canvas)
- * lives in its own file there so they stay independently legible and
- * testable.
+ * subsystem (boot, eval, globals, canvas) lives in its own file there
+ * so they stay independently legible and testable.
  */
 
 import type { EmX11 } from '../../em-x11/src/index.js';
@@ -32,7 +31,6 @@ import type { EmscriptenModule } from '../../em-x11/src/types/emscripten.js';
 
 import { TclError } from './errors.js';
 import { launchRuntime } from './runtime/launch.js';
-import { AsyncifyQueue } from './runtime/asyncify-queue.js';
 import { makeEval } from './runtime/eval.js';
 import { makeGlobals, type TcldideGlobals } from './runtime/globals.js';
 import { makeCanvas, type TcldideCanvas } from './runtime/canvas.js';
@@ -122,9 +120,7 @@ export async function loadTcldide(config: TcldideConfig = {}): Promise<TcldideAP
   };
   const { em, module, bindings, tclVersion, tkVersion } = await launchRuntime(launchConfig);
 
-  const queue = new AsyncifyQueue();
-
-  const { runTcl, runTclAsync } = makeEval(bindings, queue);
+  const { runTcl, runTclAsync } = makeEval(bindings);
   const globals = makeGlobals(bindings, runTcl);
   const canvas  = makeCanvas(em);
 
