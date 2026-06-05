@@ -49,11 +49,6 @@ export default defineConfig({
   plugins: [printDemoUrls()],
 
   server: {
-    headers: {
-      // Required for SharedArrayBuffer (emscripten pthreads / Asyncify).
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-    },
     fs: {
       // Allow serving our own build outputs plus the sibling em-x11 tree
       // (tk-hello/main.ts imports Host from ../../../em-x11/src/host/...).

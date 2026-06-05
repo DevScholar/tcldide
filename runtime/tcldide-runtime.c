@@ -1,19 +1,19 @@
 /*
  * tcldide-runtime -- generic Tcl/Tk wasm runtime exposing a Pyodide-style
- * JS API. main() initialises Tcl + Tk + the browser notifier and returns;
- * the runtime stays alive (noExitRuntime). All evaluation happens through
- * cwrap'd entry points the JS loader calls:
+ * JS API. main() initialises Tcl + Tk, kicks one update so the main
+ * window realises, then registers an rAF-driven tick via
+ * emscripten_set_main_loop and returns. The runtime stays alive
+ * (noExitRuntime). All evaluation happens through cwrap'd entry points
+ * the JS loader calls:
  *
- *   tcldide_eval        -- Tcl_Eval into a private result slot.
+ *   tcldide_eval        -- Tcl_Eval into a private result slot + drain.
  *   tcldide_result      -- last captured result (or errorInfo on TCL_ERROR).
  *   tcldide_get_var     -- Tcl_GetVar in global scope.
  *   tcldide_set_var     -- Tcl_SetVar in global scope.
- *   tcldide_do_one_event-- pump the Tcl/Tk event queue once (TCL_DONT_WAIT).
  *
- * The browser notifier is the same shape as demos/tk-hello/tk-hello.c:
- * yield to the browser per-tick and pump every registered fd handler so
- * Tk's X-fd DisplayFileProc actually runs. See
- * project_tk_browser_notifier in memory for the full why.
+ * Tcl uses its default Unix notifier (tclUnixNotfy.c) which calls
+ * select() on the X11 display fd. em-x11's poll.c override handles
+ * yielding to the browser — no custom notifier needed.
  */
 
 #include <tcl.h>
@@ -24,7 +24,6 @@
 #include <emscripten.h>
 
 extern int Tcldide_Init(Tcl_Interp *interp);
-extern void emx11_install_browser_notifier(void);
 
 /* --------------------------------------------------------------------- */
 
@@ -100,6 +99,15 @@ int tcldide_eval(const char *code) {
 
     int rc = Tcl_Eval(g_interp, Tcl_DStringValue(&norm));
     Tcl_DStringFree(&norm);
+
+    /* Drain idle/expose handlers right away so widget realize/map paints
+     * before the next rAF tick. Without this, a `pack [button .b ...]`
+     * wouldn't appear on screen for up to 16ms. Same budget as the rAF
+     * tick to cap runaway `after 0` chains. */
+    for (int i = 0; i < 256; i++) {
+        if (!Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT)) break;
+    }
+
     if (rc == TCL_OK) {
         set_result(Tcl_GetStringResult(g_interp));
     } else {
@@ -190,35 +198,34 @@ void tcldide_push_key_text(const char *utf8) {
     Tcl_DStringFree(&ds);
 }
 
-/* Pump the event queue until it's drained. JS drives this on
- * requestAnimationFrame; one tick processes everything Tcl/Tk has
- * outstanding (window realize, geometry, expose, idle redraws,
- * after-timers due now) before yielding back to the browser. The
- * original tight C loop did this implicitly at ~1ms per event; if
- * we processed only one event per RAF tick we'd be at ~16ms each
- * and a typical demo's 30+ widgets would visibly load over several
- * seconds. We pin the flag combo here so the JS side doesn't have
- * to duplicate Tcl's bit definitions and get them wrong --
- * `TCL_ALL_EVENTS = ~TCL_DONT_WAIT` is a sign-extended ~0, which is
- * easy to misencode as 0x1f and silently drop TCL_IDLE_EVENTS (0x20). */
-EMSCRIPTEN_KEEPALIVE
-int tcldide_do_one_event(void) {
-    if (!g_interp) return 0;
-    int processed = 0;
-    /* Cap at 256 to bound a single tick: a runaway `after 0` chain
-     * shouldn't pin the main thread forever. 256 events is more than
-     * any normal widget realize round-trip needs. */
+/* rAF-driven event pump. emscripten_set_main_loop calls this each
+ * animation frame. We drain all pending Tcl events (X11, timer, idle)
+ * then return so the browser stays responsive. A budget of 256 events
+ * caps runaway `after 0` chains; normal widget realize/map rounds are
+ * well within that.
+ *
+ * When poll() is blocked in emscripten_sleep (inner event loop in
+ * tkwait/vwait), this tick must NOT process events — the inner loop
+ * is waiting for specific events and would miss them if we consume
+ * them here. emx11_is_blocking_in_poll gates this tick.
+ *
+ * Tcl uses its default Unix notifier (tclUnixNotfy.c) which calls
+ * select() on the X11 display fd. Our poll.c override handles
+ * yielding to the browser when the event queue is empty, so this
+ * tick is lightweight — it only processes events that are already
+ * queued. */
+extern int emx11_is_blocking_in_poll(void);
+
+static void tick(void) {
+    if (!g_interp) return;
+    if (emx11_is_blocking_in_poll()) return;
     for (int i = 0; i < 256; i++) {
         if (!Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT)) break;
-        processed++;
     }
-    return processed;
 }
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
-
-    emx11_install_browser_notifier();
 
     setenv("TCL_LIBRARY", "/tcl", 1);
     setenv("TK_LIBRARY",  "/tk",  1);
@@ -261,14 +268,17 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Force one update so Tk's main window realises before the first
-     * user eval has a chance to pack widgets. Without this, the first
-     * `pack` call against `.` runs before the wrapper is mapped and
-     * the toplevel paints with stale geometry. */
-    Tcl_Eval(g_interp, "update");
+    /* Drain pending events (MapNotify, Expose) without blocking so Tk's
+     * main window is realised before the first user eval. The rAF tick
+     * will keep driving events thereafter. */
+    for (int i = 0; i < 256; i++) {
+        if (!Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT)) break;
+    }
     set_result("");
 
-    /* Module.noExitRuntime keeps the runtime alive after this returns
-     * so the cwrap'd entry points remain callable. */
+    /* emscripten_set_main_loop schedules tick() at rAF rate and returns.
+     * Module.noExitRuntime keeps the runtime alive so cwrap'd entry
+     * points (tcldide_eval, etc.) remain callable between ticks. */
+    emscripten_set_main_loop(tick, 0, 0);
     return 0;
 }

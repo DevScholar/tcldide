@@ -33,7 +33,6 @@ import type { EmscriptenModule } from '../../em-x11/src/types/emscripten.js';
 import { TclError } from './errors.js';
 import { launchRuntime } from './runtime/launch.js';
 import { AsyncifyQueue } from './runtime/asyncify-queue.js';
-import { startEventPump } from './runtime/event-pump.js';
 import { makeEval } from './runtime/eval.js';
 import { makeGlobals, type TcldideGlobals } from './runtime/globals.js';
 import { makeCanvas, type TcldideCanvas } from './runtime/canvas.js';
@@ -78,9 +77,9 @@ export interface TcldideAPI {
   /** Raw Emscripten module. Advanced use. */
   readonly module: EmscriptenModule;
 
-  /** Run a Tcl script synchronously. Returns the script's result as a
+  /** Run a Tcl script. Returns a Promise for the script's result as a
    *  string. Throws {@link TclError} on TCL_ERROR. */
-  runTcl(code: string): string;
+  runTcl(code: string): Promise<string>;
 
   /** Run a Tcl script while pumping the Tk event loop in the background.
    *  Use this for scripts that call `vwait`, `tkwait`, or `update`. */
@@ -120,7 +119,6 @@ export async function loadTcldide(config: TcldideConfig = {}): Promise<TcldideAP
   const { em, module, bindings, tclVersion, tkVersion } = await launchRuntime(launchConfig);
 
   const queue = new AsyncifyQueue();
-  startEventPump(bindings, queue);
 
   const { runTcl, runTclAsync } = makeEval(bindings, queue);
   const globals = makeGlobals(bindings, runTcl);
