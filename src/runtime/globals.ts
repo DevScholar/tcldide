@@ -15,7 +15,7 @@ export interface TcldideGlobals {
 
 export function makeGlobals(
   bindings: RuntimeBindings,
-  runTcl: (code: string) => Promise<string>,
+  runTcl: (code: string) => string,
 ): TcldideGlobals {
   return {
     get(name) {

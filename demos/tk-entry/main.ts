@@ -19,7 +19,7 @@ import { loadTcldide } from '../../src/tcldide.js';
 
 const tcldide = await loadTcldide();
 
-await tcldide.runTcl(`
+tcldide.runTcl(`
   label .title -text {Tk entry — XIM smoke test} -font {Helvetica 13 bold} -pady 6
   pack  .title -fill x
 

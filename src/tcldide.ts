@@ -77,9 +77,13 @@ export interface TcldideAPI {
   /** Raw Emscripten module. Advanced use. */
   readonly module: EmscriptenModule;
 
-  /** Run a Tcl script. Returns a Promise for the script's result as a
-   *  string. Throws {@link TclError} on TCL_ERROR. */
-  runTcl(code: string): Promise<string>;
+  /** Run a Tcl script synchronously. Returns the script's result as a
+   *  string. Throws {@link TclError} on TCL_ERROR.
+   *
+   *  Scripts that call `vwait`, `tkwait`, or `update` will cause the
+   *  wasm to suspend — in that case this throws and you should use
+   *  {@link runTclAsync} instead. */
+  runTcl(code: string): string;
 
   /** Run a Tcl script while pumping the Tk event loop in the background.
    *  Use this for scripts that call `vwait`, `tkwait`, or `update`. */
