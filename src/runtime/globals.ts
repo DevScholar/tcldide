@@ -7,10 +7,10 @@
 import type { RuntimeBindings } from './launch.js';
 
 export interface TcldideGlobals {
-  get(name: string): string | undefined;
-  set(name: string, value: unknown): void;
-  has(name: string): boolean;
-  delete(name: string): void;
+  get(name: string): Promise<string | undefined>;
+  set(name: string, value: unknown): Promise<void>;
+  has(name: string): Promise<boolean>;
+  delete(name: string): Promise<void>;
 }
 
 export function makeGlobals(
@@ -18,18 +18,18 @@ export function makeGlobals(
   runTcl: (code: string) => string,
 ): TcldideGlobals {
   return {
-    get(name) {
-      const v = bindings.c_get_var(name);
+    async get(name) {
+      const v = await bindings.c_get_var(name);
       return v == null ? undefined : v;
     },
-    set(name, value) {
-      bindings.c_set_var(name, String(value));
+    async set(name, value) {
+      await bindings.c_set_var(name, String(value));
     },
-    has(name) {
-      return bindings.c_get_var(name) != null;
+    async has(name) {
+      return (await bindings.c_get_var(name)) != null;
     },
-    delete(name) {
-      void runTcl(`unset -nocomplain ::${name}`);
+    async delete(name) {
+      runTcl(`unset -nocomplain ::${name}`);
     },
   };
 }

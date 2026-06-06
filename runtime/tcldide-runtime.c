@@ -216,7 +216,7 @@ void tcldide_push_key_text(const char *utf8) {
  * queued. */
 extern int emx11_is_blocking_in_poll(void);
 
-static void tick(void) {
+void tick(void) {
     if (!g_interp) return;
     if (emx11_is_blocking_in_poll()) return;
     for (int i = 0; i < 256; i++) {

@@ -1,2 +1,4 @@
-# Force LF for shell scripts — CRLF shebangs break on Linux/WSL
+* text=auto
 *.sh text eol=lf
+*.png binary
+ext/wget-log -text

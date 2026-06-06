@@ -1,24 +1,20 @@
 /**
- * AsyncifyQueue — serialise calls into an Asyncify-enabled wasm.
+ * CallQueue — serialise calls into a JSPI-enabled wasm.
  *
- * Asyncify saves the wasm stack into a single global slot during an
- * unwind, so two suspending calls can't be in flight at once: the
- * second would overwrite the first's snapshot. This queue runs every
- * suspending call through a single-slot Promise chain so unwinds
- * happen one at a time.
+ * JSPI does not have Asyncify's single-slot stack-snapshot limitation,
+ * so concurrent suspending calls are safe in principle. However, the
+ * Tcl interpreter is single-threaded and not re-entrant, so we still
+ * serialise entry to prevent overlapping eval/event-pump calls from
+ * corrupting interpreter state.
  *
  *   - `enqueue(fn)` runs `fn` after every previously enqueued task
  *     resolves, and returns a Promise for the result.
- *   - `busy` is true while a queued task is mid-await. Sync entry
- *     points (runTcl) check this and bail rather than re-entering
- *     wasm and trampling the saved stack.
+ *   - `busy` is true while a queued task is mid-await.
  *   - `park(promise)` parks an out-of-band Promise on the chain so
- *     subsequent enqueue()s wait for it. Used when the sync runTcl
- *     path detects c_eval went async — we can't resume the unwind
- *     synchronously, but we can ensure the next call doesn't race it.
+ *     subsequent enqueue()s wait for it.
  */
 
-export class AsyncifyQueue {
+export class CallQueue {
   private chain: Promise<unknown> = Promise.resolve();
   private _busy = false;
 

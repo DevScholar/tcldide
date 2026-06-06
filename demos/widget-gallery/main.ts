@@ -9,7 +9,7 @@ const tcldide = await loadTcldide();
 
 const resp = await fetch(new URL('widget_gallery.tcl', import.meta.url).href);
 const tclCode = await resp.text();
-tcldide.runTcl(tclCode);
+await tcldide.runTcl(tclCode);
 
 console.log(`widget-gallery: Tcl ${tcldide.version} / Tk ${tcldide.tkVersion} ready`);
 

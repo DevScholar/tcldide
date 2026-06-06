@@ -2,10 +2,10 @@
  * launch — boot the tcldide-runtime wasm under em-x11 and bind the
  * cwrap entry points the rest of the runtime modules call.
  *
- * Each binding is typed `T | Promise<T>`: ASYNCIFY-enabled wasm exports
- * return a sync value when the call doesn't suspend and a Promise when
- * it does. In practice, emscripten_sleep in Worker uses Atomics.wait
- * (truly blocking), so cwrap calls always return synchronously.
+ * With JSPI, wasm exports that may suspend (emscripten_sleep) return
+ * Promises. The loadWasm post-processing wraps every '_'-prefixed export
+ * with WebAssembly.promising, so all cwrap-based calls now return
+ * Promises. Callers must await.
  */
 
 import { createEmX11, type EmX11 } from '../../../em-x11/src/index.js';
@@ -27,10 +27,10 @@ export interface LaunchConfig {
 }
 
 export interface RuntimeBindings {
-  c_eval(code: string): number | Promise<number>;
-  c_result(): string;
-  c_get_var(name: string): string | null;
-  c_set_var(name: string, value: string): string | null;
+  c_eval(code: string): Promise<number>;
+  c_result(): Promise<string>;
+  c_get_var(name: string): Promise<string | null>;
+  c_set_var(name: string, value: string): Promise<string | null>;
 }
 
 export interface LaunchResult {
@@ -85,17 +85,22 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
 
   const cwrap = (module as EmscriptenModule & CwrapModule).cwrap;
   const bindings: RuntimeBindings = {
-    c_eval:         cwrap('tcldide_eval',         'number', ['string']) as RuntimeBindings['c_eval'],
-    c_result:       cwrap('tcldide_result',       'string', [])         as RuntimeBindings['c_result'],
-    c_get_var:      cwrap('tcldide_get_var',      'string', ['string']) as RuntimeBindings['c_get_var'],
-    c_set_var:      cwrap('tcldide_set_var',      'string', ['string', 'string']) as RuntimeBindings['c_set_var'],
+    c_eval:    cwrap('tcldide_eval',    'number', ['string'])             as RuntimeBindings['c_eval'],
+    c_result:  cwrap('tcldide_result',  'string', [])                     as RuntimeBindings['c_result'],
+    c_get_var: cwrap('tcldide_get_var', 'string', ['string'])             as RuntimeBindings['c_get_var'],
+    c_set_var: cwrap('tcldide_set_var', 'string', ['string', 'string'])   as RuntimeBindings['c_set_var'],
   };
+
+  const [tclVersion, tkVersion] = await Promise.all([
+    bindings.c_get_var('tcl_version'),
+    bindings.c_get_var('tk_version'),
+  ]);
 
   return {
     em,
     module,
     bindings,
-    tclVersion: bindings.c_get_var('tcl_version') ?? '',
-    tkVersion:  bindings.c_get_var('tk_version')  ?? '',
+    tclVersion: tclVersion ?? '',
+    tkVersion:  tkVersion ?? '',
   };
 }

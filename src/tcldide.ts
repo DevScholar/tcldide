@@ -78,13 +78,16 @@ export interface TcldideAPI {
   /** Run a Tcl script synchronously. Returns the script's result as a
    *  string. Throws {@link TclError} on TCL_ERROR.
    *
-   *  Scripts that call `vwait`, `tkwait`, or `update` will cause the
-   *  wasm to suspend — in that case this throws and you should use
-   *  {@link runTclAsync} instead. */
+   *  This relies on a synchronous XMLHttpRequest trampoline to drain
+   *  the microtask queue so the underlying JSPI Promise can resolve.
+   *  It is only reliable in Firefox; V8-based browsers (Chrome, Edge)
+   *  will hang because sync XHR does not drain microtasks there.
+   *  Prefer {@link runTclAsync} for cross-browser reliability. */
   runTcl(code: string): string;
 
-  /** Run a Tcl script while pumping the Tk event loop in the background.
-   *  Use this for scripts that call `vwait`, `tkwait`, or `update`. */
+  /** Run a Tcl script asynchronously. Returns a Promise that resolves
+   *  to the script's result. This is the JSPI-native path and works
+   *  reliably in all browsers. */
   runTclAsync(code: string): Promise<string>;
 
   /** Tcl global namespace, mirroring `pyodide.globals`. */
