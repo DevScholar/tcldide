@@ -69,23 +69,18 @@ export function makeEval(bindings: RuntimeBindings): EvalAPI {
      * XHR should not run microtasks — but Firefox's implementation
      * happens to do so. V8 (Chrome/Edge) does not, so the loop has a
      * hard cap that throws a clear error. */
-    for (let spins = 0; !done && spins < 10000; spins++) {
+    while (!done) {
       try {
         const xhr = new XMLHttpRequest();
         xhr.open('GET', 'data:text/plain,', false);
         xhr.send();
       } catch {
         /* Sync XHR blocked entirely (e.g. Worker without access). */
-        break;
+        throw new Error(
+          'runTcl: synchronous mode not available (sync XHR blocked). ' +
+          'Use runTclAsync instead.',
+        );
       }
-    }
-
-    if (!done) {
-      throw new Error(
-        'runTcl: synchronous wrapper did not resolve. ' +
-        'This browser does not drain the microtask queue during ' +
-        'sync XHR (Chrome/Edge). Use runTclAsync instead.',
-      );
     }
     if (error) throw error;
     return result!;

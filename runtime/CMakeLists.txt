@@ -108,6 +108,9 @@ target_link_options(tcldide-runtime PRIVATE
     "SHELL:-s EXPORTED_FUNCTIONS=['_main','_tick','_tcldide_eval','_tcldide_result','_tcldide_get_var','_tcldide_set_var','_tcldide_push_key_text','_emx11_push_button_event','_emx11_push_motion_event','_emx11_push_key_event','_emx11_push_key_event_kc','_emx11_install_keysym','_emx11_push_expose_event','_emx11_push_map_request','_emx11_push_reparent_notify','_malloc','_free']"
     "SHELL:-s JSPI_EXPORTS='tick,main,__main_argc_argv,tcldide_eval,tcldide_get_var,tcldide_set_var'"
     "SHELL:-Wl,--error-limit=0"
+    # poll.c / fork.c overrides (see em-x11/cmake/emx11_demo.cmake).
+    "SHELL:-Wl,--wrap=read"
+    "SHELL:-Wl,--wrap=_exit"
     # --profiling-funcs: keep wasm function names through wasm-opt so
     # browser stacks show C symbols instead of $func1234 indices.
     # No DWARF, no source lines — just names. ~200KB to .wasm, no

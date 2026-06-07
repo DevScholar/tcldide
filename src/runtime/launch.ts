@@ -85,10 +85,10 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
 
   const cwrap = (module as EmscriptenModule & CwrapModule).cwrap;
   const bindings: RuntimeBindings = {
-    c_eval:    cwrap('tcldide_eval',    'number', ['string'])             as RuntimeBindings['c_eval'],
+    c_eval:    cwrap('tcldide_eval',    'number', ['string'],             { async: true }) as RuntimeBindings['c_eval'],
     c_result:  cwrap('tcldide_result',  'string', [])                     as RuntimeBindings['c_result'],
-    c_get_var: cwrap('tcldide_get_var', 'string', ['string'])             as RuntimeBindings['c_get_var'],
-    c_set_var: cwrap('tcldide_set_var', 'string', ['string', 'string'])   as RuntimeBindings['c_set_var'],
+    c_get_var: cwrap('tcldide_get_var', 'string', ['string'],             { async: true }) as RuntimeBindings['c_get_var'],
+    c_set_var: cwrap('tcldide_set_var', 'string', ['string', 'string'],   { async: true }) as RuntimeBindings['c_set_var'],
   };
 
   const [tclVersion, tkVersion] = await Promise.all([
