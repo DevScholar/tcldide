@@ -4,8 +4,6 @@
  * back through Tcl's own `unset` since there's no direct C entry.
  */
 
-import type { RuntimeBindings } from './launch.js';
-
 export interface TcldideGlobals {
   get(name: string): Promise<string | undefined>;
   set(name: string, value: unknown): Promise<void>;
@@ -13,8 +11,13 @@ export interface TcldideGlobals {
   delete(name: string): Promise<void>;
 }
 
+interface GlobalsBindings {
+  c_get_var(name: string): Promise<string | null>;
+  c_set_var(name: string, value: string): Promise<string | null>;
+}
+
 export function makeGlobals(
-  bindings: RuntimeBindings,
+  bindings: GlobalsBindings,
   runTcl: (code: string) => string,
 ): TcldideGlobals {
   return {

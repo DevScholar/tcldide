@@ -17,7 +17,9 @@
  */
 
 #include <tcl.h>
+#ifdef WITH_TK
 #include <tk.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,8 +80,7 @@ static void set_result(const char *s) {
     }
 }
 
-EMSCRIPTEN_KEEPALIVE
-int tcldide_eval(const char *code) {
+static int eval_impl(const char *code) {
     if (!g_interp) { set_result("tcldide: interp not initialised"); return TCL_ERROR; }
     Tcl_DString ds;
     const char *cesu = to_cesu8(code, &ds);
@@ -117,6 +118,22 @@ int tcldide_eval(const char *code) {
     }
     return rc;
 }
+
+EMSCRIPTEN_KEEPALIVE
+int tcldide_eval(const char *code) {
+    return eval_impl(code);
+}
+
+#ifndef WITH_TK
+/* JSPI-safe async entry point for the base (Tcl-only) build.
+ * tcldide_eval is a plain sync export (not in JSPI_EXPORTS) so
+ * runTcl returns synchronously. This wrapper IS in JSPI_EXPORTS
+ * so runTclAsync can suspend across vwait / blocking after. */
+EMSCRIPTEN_KEEPALIVE
+int tcldide_eval_async(const char *code) {
+    return eval_impl(code);
+}
+#endif
 
 EMSCRIPTEN_KEEPALIVE
 const char *tcldide_result(void) {
@@ -184,6 +201,7 @@ const char *tcldide_set_var(const char *name, const char *value) {
  * be deleted and launch.ts's _emx11_set_pending_key_text rebind
  * removed. Until then this is the load-bearing compatibility layer
  * between X11 UTF-8 and Tcl 8.6 CESU-8, NOT temporary scaffolding. */
+#ifdef WITH_TK
 extern void emx11_set_pending_key_text(const char *utf8);
 
 EMSCRIPTEN_KEEPALIVE
@@ -197,6 +215,7 @@ void tcldide_push_key_text(const char *utf8) {
     emx11_set_pending_key_text(cesu);
     Tcl_DStringFree(&ds);
 }
+#endif
 
 /* rAF-driven event pump. emscripten_set_main_loop calls this each
  * animation frame. We drain all pending Tcl events (X11, timer, idle)
@@ -214,6 +233,7 @@ void tcldide_push_key_text(const char *utf8) {
  * yielding to the browser when the event queue is empty, so this
  * tick is lightweight — it only processes events that are already
  * queued. */
+#ifdef WITH_TK
 extern int emx11_is_blocking_in_poll(void);
 
 void tick(void) {
@@ -223,13 +243,16 @@ void tick(void) {
         if (!Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT)) break;
     }
 }
+#endif
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
 
     setenv("TCL_LIBRARY", "/tcl", 1);
+#ifdef WITH_TK
     setenv("TK_LIBRARY",  "/tk",  1);
     setenv("DISPLAY",     ":0",   1);
+#endif
 
     Tcl_FindExecutable("tcldide-runtime");
 
@@ -258,6 +281,7 @@ int main(int argc, char **argv) {
                 Tcl_GetStringResult(g_interp));
     }
 
+#ifdef WITH_TK
     /* Belt-and-braces: source auto.tcl so tcl_findLibrary is loaded
      * before Tk_Init asks for it. */
     Tcl_Eval(g_interp, "catch {source /tcl/auto.tcl}");
@@ -280,5 +304,6 @@ int main(int argc, char **argv) {
      * Module.noExitRuntime keeps the runtime alive so cwrap'd entry
      * points (tcldide_eval, etc.) remain callable between ticks. */
     emscripten_set_main_loop(tick, 0, 0);
+#endif
     return 0;
 }

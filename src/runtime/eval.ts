@@ -1,30 +1,48 @@
 /**
  * eval — runTcl and runTclAsync wrappers around tcldide_eval.
- * Mirrors Pyodide's runPython / runPythonAsync split.
  *
- * With JSPI, all wasm exports are wrapped with WebAssembly.promising
- * and return Promises. runTclAsync is the native async entry point.
- *
- * runTcl pretends to be synchronous by wrapping runTclAsync with a
- * synchronous XMLHttpRequest to a data: URL. The theory: sync XHR
- * yields to the browser's event loop, allowing the microtask queue
- * to drain so the JSPI Promise can resolve. In practice this works
- * in Firefox but NOT in V8 (Chrome/Edge) where sync XHR does not
- * drain microtasks. Use runTclAsync for reliable behaviour.
+ * Two paths:
+ *   makeEval   — Tk build:  c_eval is JSPI-wrapped (returns Promise).
+ *                runTclAsync awaits it; runTcl uses a sync-XHR trampoline.
+ *   makeEvalBase — Base build: c_eval is a plain sync export (returns
+ *                number). runTcl calls it directly. c_eval_async is the
+ *                JSPI-wrapped variant for runTclAsync.
  */
 
-import type { RuntimeBindings } from './launch.js';
 import { TclError } from '../errors.js';
 
 export interface EvalAPI {
-  /** Synchronous facade — wraps runTclAsync with a sync-XHR trampoline.
-   *  Only reliable in Firefox; in V8-based browsers this will hang
-   *  because sync XHR doesn't drain the microtask queue. */
   runTcl(code: string): string;
-  /** JSPI-native async entry point. Prefer this for cross-browser
-   *  reliability. */
   runTclAsync(code: string): Promise<string>;
 }
+
+/* ---- base build (sync c_eval + async c_eval_async) ---- */
+
+export interface BaseEvalBindings {
+  c_eval(code: string): number;
+  c_eval_async(code: string): Promise<number>;
+  c_result(): string;
+}
+
+export function makeEvalBase(bindings: BaseEvalBindings): EvalAPI {
+  const runTclAsync = async (code: string): Promise<string> => {
+    const rc = await bindings.c_eval_async(code);
+    const result = bindings.c_result();
+    if (rc !== 0) throw new TclError(result);
+    return result;
+  };
+
+  const runTcl = (code: string): string => {
+    const rc = bindings.c_eval(code);
+    const result = bindings.c_result();
+    if (rc !== 0) throw new TclError(result);
+    return result;
+  };
+
+  return { runTcl, runTclAsync };
+}
+
+/* ---- Tk build (JSPI c_eval → sync-XHR trampoline for runTcl) ---- */
 
 const _syncXhrSupported = (() => {
   try {
@@ -37,7 +55,12 @@ const _syncXhrSupported = (() => {
   }
 })();
 
-export function makeEval(bindings: RuntimeBindings): EvalAPI {
+export interface TkEvalBindings {
+  c_eval(code: string): Promise<number>;
+  c_result(): Promise<string>;
+}
+
+export function makeEval(bindings: TkEvalBindings): EvalAPI {
   const runTclAsync = async (code: string): Promise<string> => {
     const rc = await bindings.c_eval(code);
     const result = await bindings.c_result();
@@ -62,20 +85,12 @@ export function makeEval(bindings: RuntimeBindings): EvalAPI {
       (e) => { error = e; done = true; },
     );
 
-    /* Synchronous XHR to a data: URL. The theory is that some browser
-     * engines (Firefox) drain the microtask queue during the sync
-     * fetch, allowing the JSPI Promise chain above to resolve. This
-     * is NOT standards-mandated behaviour — the HTML spec says sync
-     * XHR should not run microtasks — but Firefox's implementation
-     * happens to do so. V8 (Chrome/Edge) does not, so the loop has a
-     * hard cap that throws a clear error. */
     for (let spins = 0; !done && spins < 10000; spins++) {
       try {
         const xhr = new XMLHttpRequest();
         xhr.open('GET', 'data:text/plain,', false);
         xhr.send();
       } catch {
-        /* Sync XHR blocked entirely (e.g. Worker without access). */
         break;
       }
     }

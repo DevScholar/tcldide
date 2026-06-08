@@ -5,11 +5,11 @@
 
 import { loadTcldide } from '../../src/tcldide.js';
 
-const tcldide = await loadTcldide();
+const tcldide = await loadTcldide({ tk: true });
 
 const resp = await fetch(new URL('widget_gallery.tcl', import.meta.url).href);
 const tclCode = await resp.text();
-await tcldide.runTcl(tclCode);
+await tcldide.runTclAsync(tclCode);
 
 console.log(`widget-gallery: Tcl ${tcldide.version} / Tk ${tcldide.tkVersion} ready`);
 

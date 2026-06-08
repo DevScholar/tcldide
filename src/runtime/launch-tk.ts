@@ -1,6 +1,8 @@
 /**
- * launch — boot the tcldide-runtime wasm under em-x11 and bind the
- * cwrap entry points the rest of the runtime modules call.
+ * launch-tk — boot the tcldide-runtime-tk wasm under em-x11.
+ *
+ * em-x11 is dynamically imported so the JS host (canvas, compositor,
+ * input handlers, IME) is only fetched when Tk mode is requested.
  *
  * With JSPI, wasm exports that may suspend (emscripten_sleep) return
  * Promises. The loadWasm post-processing wraps every '_'-prefixed export
@@ -8,7 +10,7 @@
  * Promises. Callers must await.
  */
 
-import { createEmX11, type EmX11 } from '../../../em-x11/src/index.js';
+import type { EmX11 } from '../../../em-x11/src/index.js';
 import type { EmscriptenModule } from '../../../em-x11/src/types/emscripten.js';
 
 export interface LaunchConfig {
@@ -18,10 +20,6 @@ export interface LaunchConfig {
   canvas?: HTMLCanvasElement;
   width?: number;
   height?: number;
-  /** Closure-bound stdout/stderr the caller can swap later via
-   *  setStdout/setStderr without restarting the runtime. We pass
-   *  thunks into createEmX11 so the swap takes effect on the next
-   *  print. */
   stdout: (m: string) => void;
   stderr: (m: string) => void;
 }
@@ -37,9 +35,7 @@ export interface LaunchResult {
   em: EmX11;
   module: EmscriptenModule;
   bindings: RuntimeBindings;
-  /** tcl_version global, e.g. "8.6". */
   tclVersion: string;
-  /** tk_version global, e.g. "8.6". */
   tkVersion: string;
 }
 
@@ -48,13 +44,17 @@ interface CwrapModule {
     name: string,
     returnType: string | null,
     argTypes: string[],
+    opts?: { async?: boolean },
   ) => (...args: unknown[]) => unknown;
 }
 
-export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult> {
-  const indexURL = (config.indexURL ?? '/build/artifacts/tcldide-runtime').replace(/\/+$/, '');
-  const glueURL  = config.glueURL  ?? `${indexURL}/tcldide-runtime.js`;
-  const wasmURL  = config.wasmURL  ?? `${indexURL}/tcldide-runtime.wasm`;
+export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResult> {
+  // Dynamic import — em-x11 JS is only fetched when Tk mode is requested
+  const { createEmX11 } = await import('../../../em-x11/src/index.js');
+
+  const indexURL = (config.indexURL ?? '/build/artifacts/tcldide-runtime-tk').replace(/\/+$/, '');
+  const glueURL  = config.glueURL  ?? `${indexURL}/tcldide-runtime-tk.js`;
+  const wasmURL  = config.wasmURL  ?? `${indexURL}/tcldide-runtime-tk.wasm`;
 
   const em = await createEmX11({
     canvas: config.canvas,
@@ -86,7 +86,7 @@ export async function launchRuntime(config: LaunchConfig): Promise<LaunchResult>
   const cwrap = (module as EmscriptenModule & CwrapModule).cwrap;
   const bindings: RuntimeBindings = {
     c_eval:    cwrap('tcldide_eval',    'number', ['string'],             { async: true }) as RuntimeBindings['c_eval'],
-    c_result:  cwrap('tcldide_result',  'string', [])                     as RuntimeBindings['c_result'],
+    c_result:  cwrap('tcldide_result',  'string', []),
     c_get_var: cwrap('tcldide_get_var', 'string', ['string'],             { async: true }) as RuntimeBindings['c_get_var'],
     c_set_var: cwrap('tcldide_set_var', 'string', ['string', 'string'],   { async: true }) as RuntimeBindings['c_set_var'],
   };

@@ -6,9 +6,9 @@
 
 import { loadTcldide } from '../../src/tcldide.js';
 
-const tcldide = await loadTcldide();
+const tcldide = await loadTcldide({ tk: true });
 
-await tcldide.runTcl(`
+await tcldide.runTclAsync(`
   label .title -text {Tk on WebAssembly} -font {Helvetica 14 bold} -pady 6
   pack  .title -fill x
   frame .sep -height 2 -relief sunken -bd 1
