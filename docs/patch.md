@@ -32,7 +32,7 @@ hunk-by-hunk rationale.
 
 ## Tcl 8.6.6 (build-level only)
 
-Source: `wget` of `tcl-core8.6.6-src.tar.gz`, extracted under `tcl/`.
+Source: `wget` of `tcl-core8.6.6-src.tar.gz`, extracted under `ignored-area/third-party/tcl/`.
 No `patch` step.
 
 ### Configure
@@ -83,7 +83,7 @@ sidestepped.
 
 ## Tk 8.6.6 (build-level only)
 
-Source: `wget` of `tk8.6.6-src.tar.gz`, extracted under `tk/`.
+Source: `wget` of `tk8.6.6-src.tar.gz`, extracted under `ignored-area/third-party/tk/`.
 No `patch` step.
 
 ### Configure

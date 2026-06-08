@@ -1,4 +1,3 @@
-*.tar.gz
 *.zip
 *.data
 preGeneratedJs.js
@@ -6,8 +5,7 @@ tcldide.js
 tcldide.wasm
 /jsbuild/
 /library/
-/tcl/
-/tk/
+/ignored-area/
 /ecky-l.github.io/
 
 # Demo build outputs (Node toolchain added for tk-hello and future Tk demos)

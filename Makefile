@@ -37,10 +37,10 @@ BCFLAGS?=-Oz -s WASM=1
 # commands (`::tcldide::dom`, `::tcldide::jscall`) are compiled into the runtime
 # executable from opt/tcldide.c, not into libtcl, so Tcl can stay pristine.
 tcldideprep:
-	wget -nc http://prdownloads.sourceforge.net/tcl/tcl-core$(TCLVERSION)-src.tar.gz
-	mkdir -p tcl
-	tar -C tcl --strip-components=1 -xf tcl-core$(TCLVERSION)-src.tar.gz
-	cd tcl/unix && autoconf
+	mkdir -p ignored-area/tarballs ignored-area/third-party/tcl
+	wget -nc -P ignored-area/tarballs http://prdownloads.sourceforge.net/tcl/tcl-core$(TCLVERSION)-src.tar.gz
+	tar -C ignored-area/third-party/tcl --strip-components=1 -xf ignored-area/tarballs/tcl-core$(TCLVERSION)-src.tar.gz
+	cd ignored-area/third-party/tcl/unix && autoconf
 
 config:
 	mkdir -p $(INSTALLDIR)
@@ -57,7 +57,7 @@ config:
 	# tcl_cv_str*_unbroken=ok: cross-compile path defaults these to "unknown"
 	# which Tcl treats as broken and pulls in compat/str{toul,str}.c. Same
 	# duplicate-symbol fallout, so force them to "ok".
-	cd tcl/unix && emconfigure ./configure \
+	cd ignored-area/third-party/tcl/unix && emconfigure ./configure \
 		--host=wasm32-unknown-emscripten \
 		--prefix=$(CURDIR)/$(INSTALLDIR) \
 		--disable-threads --disable-load --disable-shared \
@@ -65,19 +65,19 @@ config:
 		ac_cv_func_strtoul=yes \
 		tcl_cv_strtoul_unbroken=ok \
 		tcl_cv_strstr_unbroken=ok
-	cd tcl/unix && sed -i 's/-O2//g' Makefile
-	cd tcl/unix && sed -i 's/^\(CFLAGS\t.*\)/\1 $(BCFLAGS)/g' Makefile
+	cd ignored-area/third-party/tcl/unix && sed -i 's/-O2//g' Makefile
+	cd ignored-area/third-party/tcl/unix && sed -i 's/^\(CFLAGS\t.*\)/\1 $(BCFLAGS)/g' Makefile
 
 # Build only the static archives, never tclsh -- tclsh is a native exe
 # entry point that has no place in a browser build, and the install-binaries
 # target would also try to install it. Manual cp instead of `make install`.
 tcldideinstall:
-	cd tcl/unix && emmake make -j libtcl8.6.a libtclstub8.6.a
+	cd ignored-area/third-party/tcl/unix && emmake make -j libtcl8.6.a libtclstub8.6.a
 	mkdir -p $(INSTALLDIR)/lib $(INSTALLDIR)/include
-	cp tcl/unix/libtcl8.6.a tcl/unix/libtclstub8.6.a $(INSTALLDIR)/lib/
-	cp tcl/unix/tclConfig.sh tcl/unix/tclooConfig.sh $(INSTALLDIR)/lib/ 2>/dev/null || true
-	cp tcl/generic/tcl.h tcl/generic/tclDecls.h tcl/generic/tclPlatDecls.h \
-		tcl/generic/tclTomMath.h tcl/generic/tclTomMathDecls.h \
+	cp ignored-area/third-party/tcl/unix/libtcl8.6.a ignored-area/third-party/tcl/unix/libtclstub8.6.a $(INSTALLDIR)/lib/
+	cp ignored-area/third-party/tcl/unix/tclConfig.sh ignored-area/third-party/tcl/unix/tclooConfig.sh $(INSTALLDIR)/lib/ 2>/dev/null || true
+	cp ignored-area/third-party/tcl/generic/tcl.h ignored-area/third-party/tcl/generic/tclDecls.h ignored-area/third-party/tcl/generic/tclPlatDecls.h \
+		ignored-area/third-party/tcl/generic/tclTomMath.h ignored-area/third-party/tcl/generic/tclTomMathDecls.h \
 		$(INSTALLDIR)/include/
 
 # ---- Tk ---------------------------------------------------------------
@@ -89,16 +89,16 @@ tcldideinstall:
 # must have been built (EMX11_LIBDIR exists) at least for the header tree.
 
 tkprep:
-	wget -nc http://prdownloads.sourceforge.net/tcl/tk$(TKVERSION)-src.tar.gz
-	mkdir -p tk
-	tar -C tk --strip-components=1 -xf tk$(TKVERSION)-src.tar.gz
-	cd tk/unix && autoconf
+	mkdir -p ignored-area/tarballs ignored-area/third-party/tk
+	wget -nc -P ignored-area/tarballs http://prdownloads.sourceforge.net/tcl/tk$(TKVERSION)-src.tar.gz
+	tar -C ignored-area/third-party/tk --strip-components=1 -xf ignored-area/tarballs/tk$(TKVERSION)-src.tar.gz
+	cd ignored-area/third-party/tk/unix && autoconf
 
 tkconfig:
 	@test -d "$(EMX11_INCLUDES)/X11" || \
 		(echo "em-x11 headers not found at $(EMX11_INCLUDES)/X11"; exit 1)
 	chmod +x scripts/xft-config 2>/dev/null || true
-	cd tk/unix && \
+	cd ignored-area/third-party/tk/unix && \
 		PATH="$(CURDIR)/scripts:$$PATH" \
 		EMX11_INCLUDES="$(EMX11_INCLUDES)" \
 		EMX11_LIBDIR="$(EMX11_LIBDIR)" \
@@ -117,12 +117,12 @@ tkconfig:
 	# Strip optimisation flags the configure injects (same hack as Tcl's
 	# config target) and make sure em-x11 headers win over anything the
 	# configure probe stuck into X11_INCLUDES.
-	cd tk/unix && sed -i 's/-O2//g' Makefile
-	cd tk/unix && sed -i 's|^\(CFLAGS[[:space:]].*\)|\1 $(BCFLAGS) -DTK_USE_INPUT_METHODS=1|g' Makefile
-	cd tk/unix && sed -i 's|^X11_INCLUDES[[:space:]]*=.*|X11_INCLUDES = -I$(EMX11_INCLUDES)|' Makefile
+	cd ignored-area/third-party/tk/unix && sed -i 's/-O2//g' Makefile
+	cd ignored-area/third-party/tk/unix && sed -i 's|^\(CFLAGS[[:space:]].*\)|\1 $(BCFLAGS) -DTK_USE_INPUT_METHODS=1|g' Makefile
+	cd ignored-area/third-party/tk/unix && sed -i 's|^X11_INCLUDES[[:space:]]*=.*|X11_INCLUDES = -I$(EMX11_INCLUDES)|' Makefile
 
 libtk: tkconfig
-	cd tk/unix && emmake make -j libtk8.6.a libtkstub8.6.a
+	cd ignored-area/third-party/tk/unix && emmake make -j libtk8.6.a libtkstub8.6.a
 
 # Install just the pieces the cmake runtime needs: the static archives
 # and the header tree. Skip Tk's install-binaries because it transitively
@@ -130,26 +130,26 @@ libtk: tkconfig
 # in a page with a Canvas attached, so we build that at the demo layer.
 tkinstall: libtk
 	mkdir -p $(INSTALLDIR)/lib $(INSTALLDIR)/include/tk
-	cp tk/unix/libtk8.6.a tk/unix/libtkstub8.6.a $(INSTALLDIR)/lib/
-	cp tk/unix/tkConfig.sh $(INSTALLDIR)/lib/
-	cp tk/generic/tk.h tk/generic/tkDecls.h tk/generic/tkPlatDecls.h \
-		tk/generic/tkIntXlibDecls.h $(INSTALLDIR)/include/tk/ 2>/dev/null || true
-	cp tk/generic/*.h $(INSTALLDIR)/include/tk/
+	cp ignored-area/third-party/tk/unix/libtk8.6.a ignored-area/third-party/tk/unix/libtkstub8.6.a $(INSTALLDIR)/lib/
+	cp ignored-area/third-party/tk/unix/tkConfig.sh $(INSTALLDIR)/lib/
+	cp ignored-area/third-party/tk/generic/tk.h ignored-area/third-party/tk/generic/tkDecls.h ignored-area/third-party/tk/generic/tkPlatDecls.h \
+		ignored-area/third-party/tk/generic/tkIntXlibDecls.h $(INSTALLDIR)/include/tk/ 2>/dev/null || true
+	cp ignored-area/third-party/tk/generic/*.h $(INSTALLDIR)/include/tk/
 
 tkclean:
-	if [ -e tk/unix/Makefile ] ; then cd tk/unix && make distclean ; fi
+	if [ -e ignored-area/third-party/tk/unix/Makefile ] ; then cd ignored-area/third-party/tk/unix && make distclean ; fi
 	rm -f $(INSTALLDIR)/lib/libtk8.6.a $(INSTALLDIR)/lib/tkConfig.sh
 
 clean:
 	rm -rf $(INSTALLDIR)
-	if [ -e tcl/unix/Makefile ] ; then cd tcl/unix && make clean ; fi
-	if [ -e tk/unix/Makefile ] ; then cd tk/unix && make clean ; fi
+	if [ -e ignored-area/third-party/tcl/unix/Makefile ] ; then cd ignored-area/third-party/tcl/unix && make clean ; fi
+	if [ -e ignored-area/third-party/tk/unix/Makefile ] ; then cd ignored-area/third-party/tk/unix && make clean ; fi
 
 distclean:
 	rm -rf $(INSTALLDIR)
-	if [ -e tcl/unix/Makefile ] ; then cd tcl/unix && make distclean ; fi
-	if [ -e tk/unix/Makefile ] ; then cd tk/unix && make distclean ; fi
+	if [ -e ignored-area/third-party/tcl/unix/Makefile ] ; then cd ignored-area/third-party/tcl/unix && make distclean ; fi
+	if [ -e ignored-area/third-party/tk/unix/Makefile ] ; then cd ignored-area/third-party/tk/unix && make distclean ; fi
 
 reset:
-	@read -p "This nukes anything in ./tcl/ and ./tk/, are you sure? Type 'YES I am sure' if so: " P && [ "$$P" = "YES I am sure" ]
-	rm -rf tcl tk $(INSTALLDIR)
+	@read -p "This nukes ignored-area/third-party/, are you sure? Type 'YES I am sure' if so: " P && [ "$$P" = "YES I am sure" ]
+	rm -rf ignored-area tcl tk $(INSTALLDIR)

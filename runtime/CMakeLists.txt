@@ -13,8 +13,8 @@ set(TCLDIDE_DIR "${CMAKE_SOURCE_DIR}/jsbuild")
 set(TCL_ARCHIVE "${TCLDIDE_DIR}/lib/libtcl8.6.a")
 set(TK_ARCHIVE  "${TCLDIDE_DIR}/lib/libtk8.6.a")
 
-set(TCL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/tcl/library")
-set(TK_LIBRARY_DIR  "${CMAKE_SOURCE_DIR}/tk/library")
+set(TCL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/ignored-area/third-party/tcl/library")
+set(TK_LIBRARY_DIR  "${CMAKE_SOURCE_DIR}/ignored-area/third-party/tk/library")
 
 set(EMX11_DIR        "${CMAKE_SOURCE_DIR}/../em-x11")
 set(EMX11_BUILD_DIR  "${EMX11_DIR}/build")

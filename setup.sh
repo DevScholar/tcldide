@@ -74,7 +74,7 @@ echo "em-x11 detected at $EMX11_DIR — OK"
 # ---------------------------------------------------------------------------
 # Tcl source tree
 # ---------------------------------------------------------------------------
-if [ -d tcl/unix ]; then
+if [ -d ignored-area/third-party/tcl/unix ]; then
     echo "tcl/ already present — skipping download."
 else
     echo "==> Downloading and preparing Tcl $TCLVERSION ..."
@@ -84,7 +84,7 @@ fi
 # ---------------------------------------------------------------------------
 # Tk source tree
 # ---------------------------------------------------------------------------
-if [ -d tk/unix ]; then
+if [ -d ignored-area/third-party/tk/unix ]; then
     echo "tk/ already present — skipping download."
 else
     echo "==> Downloading and preparing Tk $TKVERSION ..."
