@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Demos that compose tcldide's Tcl/Tk with em-x11's Xlib surface.",
   "type": "module",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "private": true,
   "engines": {
     "node": ">=20",

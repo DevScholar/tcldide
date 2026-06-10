@@ -8,56 +8,61 @@
   <body>
     <main>
       <h1>Addition - Tcldide</h1>
-      <p class="sub">Tcl-only wasm, no Tk.</p>
+      <p>Tcl-only wasm, no Tk.</p>
+
       <div id="status">Loading...</div>
-      <div id="output" class="result" hidden></div>
+
+      <section id="results" hidden>
+        <div>
+          runTcl('expr 1 + 1')
+          → "<span id="r1"></span>"
+        </div>
+
+        <div>
+          runTcl('set a 40; set b 2; expr {$a + $b}')
+          → "<span id="r2"></span>"
+        </div>
+
+        <div>
+          runTclAsync('expr {$x * $y}')
+          → "<span id="r3"></span>"
+        </div>
+      </section>
     </main>
+
     <script type="module">
       import { loadTcldide } from '../../src/tcldide';
 
-      const el = (id) => document.getElementById(id);
-
       const tcldide = await loadTcldide();
 
-      el('status').innerHTML =
-        `<span class="ok">Tcl ${tcldide.version} ready.</span> ` +
+      document.getElementById('status').textContent =
+        `Tcl ${tcldide.version} ready. ` +
         `tkVersion=${tcldide.tkVersion ?? 'undefined'}, ` +
         `em=${tcldide.em ? 'PRESENT' : 'undefined'}.`;
 
-      const div = el('output');
-      div.hidden = false;
+      document.getElementById('results').hidden = false;
 
-      const lines = [];
-
-      // ---- sync runTcl ----
-
+      // sync runTcl
       try {
-        const r = tcldide.runTcl('expr 1 + 1');
-        lines.push(`<span class="ok">runTcl('expr 1 + 1')</span> → "${r}"`);
+        document.getElementById('r1').textContent = tcldide.runTcl('expr 1 + 1');
       } catch (e) {
-        lines.push(`<span class="err">runTcl('expr 1 + 1') FAILED:</span> ${String(e)}`);
+        document.getElementById('r1').textContent = String(e);
       }
 
-      // ---- sync: multi-statement ----
-
+      // sync multi-statement
       try {
-        const r = tcldide.runTcl('set a 40; set b 2; expr {$a + $b}');
-        lines.push(`<span class="ok">runTcl('set a 40; set b 2; expr {$a + $b}')</span> → "${r}"`);
+        document.getElementById('r2').textContent = tcldide.runTcl('set a 40; set b 2; expr {$a + $b}');
       } catch (e) {
-        lines.push(`<span class="err">runTcl multi-stmt FAILED:</span> ${String(e)}`);
+        document.getElementById('r2').textContent = String(e);
       }
 
-      // ---- async runTclAsync ----
-
+      // async runTclAsync
       try {
         await tcldide.runTclAsync('set x 7; set y 8');
-        const r = await tcldide.runTclAsync('expr {$x * $y}');
-        lines.push(`<span class="ok">runTclAsync('expr {$x * $y}')</span> → "${r}"`);
+        document.getElementById('r3').textContent = await tcldide.runTclAsync('expr {$x * $y}');
       } catch (e) {
-        lines.push(`<span class="err">runTclAsync FAILED:</span> ${String(e)}`);
+        document.getElementById('r3').textContent = String(e);
       }
-
-      div.innerHTML = lines.join('\n');
 
       console.log('addition: Tcl', await tcldide.globals.get('tcl_version'));
       console.log('em-x11 loaded:', tcldide.em ? 'YES' : 'NO');
