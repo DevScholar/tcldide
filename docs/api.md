@@ -150,12 +150,12 @@ tcldide.FS.writeFile('/script.tcl', 'puts hello');
 tcldide.runTcl('source /script.tcl');
 ```
 
-### `tcldide.em` / `tcldide.module`
+### `tcldide.emX11` / `tcldide.module`
 
-Escape hatches. `em` is the [`@devscholar/em-x11`](https://github.com/DevScholar/em-x11)
-instance returned by `createEmX11` — use `em.fs`, `em.display`,
-`em.debug` for typed access; `em._host` is an unstable internal
-escape hatch. `em` is `undefined` in base (Tcl-only) mode.
+Escape hatches. `emX11` is the [`@devscholar/em-x11`](https://github.com/DevScholar/em-x11)
+instance returned by `createEmX11` — use `emX11.fs`, `emX11.display`,
+`emX11.debug` for typed access; `emX11._host` is an unstable internal
+escape hatch. `emX11` is `undefined` in base (Tcl-only) mode.
 
 `module` is the raw Emscripten module. Use these only for things the
 high-level API doesn't cover yet.
@@ -207,7 +207,7 @@ has been registered in Emscripten's function table via
 
 ### Overview
 
-```
+```      
 JS side     Register a function with Module.addFunction / cwrap, store
             the pointer in a Tcl variable.
 
@@ -271,9 +271,9 @@ args as a single Tcl-list string; the JS wrapper (registered via
 `addFunction`) parses that list and coerces each element back to its
 declared type before invoking the user function.
 
-Note: upstream tcldide (ecky-l) provides a `Module.tcldide.jswrap`
+Note: wacl (ecky-l) provides a `Module.tcldide.jswrap`
 convenience that bundles `addFunction` + type coercion + Tcl command
-generation. This helper has not yet been ported to the current fork.
+generation. This helper has not yet been ported to tcldide.
 
 ### Type reference
 

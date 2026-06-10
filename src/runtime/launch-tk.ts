@@ -32,7 +32,7 @@ export interface RuntimeBindings {
 }
 
 export interface LaunchResult {
-  em: EmX11;
+  emX11: EmX11;
   module: EmscriptenModule;
   bindings: RuntimeBindings;
   tclVersion: string;
@@ -56,7 +56,7 @@ export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResul
   const glueURL  = config.glueURL  ?? `${indexURL}/tcldide-runtime-tk.js`;
   const wasmURL  = config.wasmURL  ?? `${indexURL}/tcldide-runtime-tk.wasm`;
 
-  const em = await createEmX11({
+  const emX11 = await createEmX11({
     canvas: config.canvas,
     width: config.width,
     height: config.height,
@@ -64,7 +64,7 @@ export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResul
     stderr: config.stderr,
   });
 
-  const proc = em.child_process.spawn(glueURL, { wasmUrl: wasmURL });
+  const proc = emX11.child_process.spawn(glueURL, { wasmUrl: wasmURL });
   await proc.ready;
   const module = await proc.module;
 
@@ -95,7 +95,7 @@ export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResul
   const tkVersion  = bindings.c_get_var('tk_version')  ?? '';
 
   return {
-    em,
+    emX11,
     module,
     bindings,
     tclVersion,

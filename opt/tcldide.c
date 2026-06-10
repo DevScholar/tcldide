@@ -184,13 +184,13 @@ JsCallCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
     }
     else if (objc == 5)
     {
-        /* Single-argument fast path (back-compat with original tcldide). */
+        /* Single-argument fast path (back-compat with original wacl). */
         EXPAND_FCN_ARG_TYPE( result = fcn(val); )
     }
     else
     {
         /* Multi-argument form: pack args as a Tcl list string and pass
-         * to a JS wrapper registered via jswrap(fn, retType, [argTypes]).
+         * to a JS wrapper (registered via Module.addFunction).
          * The wrapper splits the list and coerces each element back to
          * its declared type before calling the user function.
          *
@@ -200,8 +200,7 @@ JsCallCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
         if (argTypeN != EMTCL_STRING && argTypeN != EMTCL_ARRAY)
         {
             Tcl_SetObjResult(interp, Tcl_NewStringObj(
-                "multi-argument form requires argType 'string' or 'array' "
-                "(register the JS function with jswrap(fn, retType, [argTypes]))", -1));
+                "multi-argument form requires argType 'string' or 'array'", -1));
             return TCL_ERROR;
         }
         Tcl_Obj *packed = Tcl_NewListObj(objc - 4, (Tcl_Obj *CONST *)(objv + 4));

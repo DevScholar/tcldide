@@ -9,8 +9,8 @@ export interface TcldideCanvas {
   getCanvas2D(): HTMLCanvasElement;
 }
 
-export function makeCanvas(em: EmX11): TcldideCanvas {
+export function makeCanvas(emX11: EmX11): TcldideCanvas {
   return {
-    getCanvas2D: () => em.display.canvas as HTMLCanvasElement,
+    getCanvas2D: () => emX11.display.canvas as HTMLCanvasElement,
   };
 }

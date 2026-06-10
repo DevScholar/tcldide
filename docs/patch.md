@@ -24,7 +24,7 @@ The tcldide-specific Tcl commands (`::tcldide::dom`, `::tcldide::jscall`) are
 | `::tcldide::*` cmds | tcldide's own      | n/a            | compiled into `runtime/`, not into libtcl |
 
 This file used to document a 200-line `tcldide.patch` inherited from
-the upstream [tcldide](https://github.com/ecky-l/tcldide) project.
+the upstream [wacl](https://github.com/ecky-l/wacl) project.
 That patch and its companion `opt/tcldideAppInit.c` have been removed —
 every hunk was either obsolete on modern emscripten or replaceable by
 a configure flag. See **Why no patch is needed** below for the

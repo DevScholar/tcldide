@@ -72,7 +72,7 @@ export interface TcldideAPI {
   /** Emscripten FS object (the in-memory filesystem). */
   readonly FS: typeof FS;
   /** The em-x11 instance driving Tk's X11 calls. Undefined in base mode. */
-  readonly em?: EmX11;
+  readonly emX11?: EmX11;
   /** Raw Emscripten module. */
   readonly module: EmscriptenModule | Record<string, unknown>;
 
@@ -112,17 +112,17 @@ export async function loadTcldide(config: TcldideConfig = {}): Promise<TcldideAP
       ...(config.width    !== undefined ? { width:    config.width    } : {}),
       ...(config.height   !== undefined ? { height:   config.height   } : {}),
     };
-    const { em, module, bindings, tclVersion, tkVersion } = await launchRuntimeTk(launchConfig);
+    const { emX11, module, bindings, tclVersion, tkVersion } = await launchRuntimeTk(launchConfig);
 
     const { runTcl, runTclAsync } = makeEval(bindings);
     const globals = makeGlobals(bindings, runTcl);
-    const canvas  = makeCanvas(em);
+    const canvas  = makeCanvas(emX11);
 
     return {
       version: tclVersion,
       tkVersion,
       FS: (module as unknown as { FS: typeof FS }).FS,
-      em,
+      emX11,
       module,
       runTcl,
       runTclAsync,
