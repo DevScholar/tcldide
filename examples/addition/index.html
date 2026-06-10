@@ -36,9 +36,7 @@
       const tcldide = await loadTcldide();
 
       document.getElementById('status').textContent =
-        `Tcl ${tcldide.version} ready. ` +
-        `tkVersion=${tcldide.tkVersion ?? 'undefined'}, ` +
-        `em=${tcldide.em ? 'PRESENT' : 'undefined'}.`;
+        `Tcl ${tcldide.version} loading complete.`;
 
       document.getElementById('results').hidden = false;
 
