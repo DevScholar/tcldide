@@ -22,8 +22,8 @@ export interface RuntimeBindings {
   c_eval_async(code: string): Promise<number>;
   /** Result of last eval (sync, not JSPI-wrapped). */
   c_result(): string;
-  c_get_var(name: string): Promise<string | null>;
-  c_set_var(name: string, value: string): Promise<string | null>;
+  c_get_var(name: string): string | null;
+  c_set_var(name: string, value: string): string | null;
 }
 
 export interface LaunchBaseResult {
@@ -58,11 +58,11 @@ export async function launchRuntimeBase(config: LaunchBaseConfig): Promise<Launc
     c_eval:       cwrapMod.cwrap('tcldide_eval',       'number', ['string'],             { async: false }) as RuntimeBindings['c_eval'],
     c_eval_async: cwrapMod.cwrap('tcldide_eval_async', 'number', ['string'],             { async: true  }) as RuntimeBindings['c_eval_async'],
     c_result:     cwrapMod.cwrap('tcldide_result',     'string', []),
-    c_get_var:    cwrapMod.cwrap('tcldide_get_var',    'string', ['string'],             { async: true  }) as RuntimeBindings['c_get_var'],
-    c_set_var:    cwrapMod.cwrap('tcldide_set_var',    'string', ['string', 'string'],   { async: true  }) as RuntimeBindings['c_set_var'],
+    c_get_var:    cwrapMod.cwrap('tcldide_get_var',    'string', ['string'],             { async: false }) as RuntimeBindings['c_get_var'],
+    c_set_var:    cwrapMod.cwrap('tcldide_set_var',    'string', ['string', 'string'],   { async: false }) as RuntimeBindings['c_set_var'],
   };
 
-  const tclVersion = (await bindings.c_get_var('tcl_version')) ?? '';
+  const tclVersion = bindings.c_get_var('tcl_version') ?? '';
 
   return { module: module as Record<string, unknown>, bindings, tclVersion };
 }

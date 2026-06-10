@@ -5,15 +5,15 @@
  */
 
 export interface TcldideGlobals {
-  get(name: string): Promise<string | undefined>;
-  set(name: string, value: unknown): Promise<void>;
-  has(name: string): Promise<boolean>;
-  delete(name: string): Promise<void>;
+  get(name: string): string | undefined;
+  set(name: string, value: unknown): void;
+  has(name: string): boolean;
+  delete(name: string): void;
 }
 
 interface GlobalsBindings {
-  c_get_var(name: string): Promise<string | null>;
-  c_set_var(name: string, value: string): Promise<string | null>;
+  c_get_var(name: string): string | null;
+  c_set_var(name: string, value: string): string | null;
 }
 
 export function makeGlobals(
@@ -21,17 +21,17 @@ export function makeGlobals(
   runTcl: (code: string) => string,
 ): TcldideGlobals {
   return {
-    async get(name) {
-      const v = await bindings.c_get_var(name);
+    get(name) {
+      const v = bindings.c_get_var(name);
       return v == null ? undefined : v;
     },
-    async set(name, value) {
-      await bindings.c_set_var(name, String(value));
+    set(name, value) {
+      bindings.c_set_var(name, String(value));
     },
-    async has(name) {
-      return (await bindings.c_get_var(name)) != null;
+    has(name) {
+      return bindings.c_get_var(name) != null;
     },
-    async delete(name) {
+    delete(name) {
       runTcl(`unset -nocomplain ::${name}`);
     },
   };

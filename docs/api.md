@@ -93,20 +93,20 @@ const result = await tcldide.runTclAsync(`
 ### `tcldide.globals`
 
 Tcl global namespace, mirroring `pyodide.globals`. **All methods are
-async** because the underlying wasm exports are JSPI-wrapped.
+synchronous** just like their Pyodide counterparts.
 
-| Method                   | Returns                        | Description |
-|--------------------------|--------------------------------|-------------|
-| `globals.get(name)`      | `Promise<string \| undefined>` | Read a Tcl global variable. `undefined` if unset. |
-| `globals.set(name, val)` | `Promise<void>`                | Write a Tcl global variable (value coerced via `String()`). |
-| `globals.has(name)`      | `Promise<boolean>`             | True if the variable is defined. |
-| `globals.delete(name)`   | `Promise<void>`                | Unset; no-op if it doesn't exist. |
+| Method                   | Returns                  | Description |
+|--------------------------|--------------------------|-------------|
+| `globals.get(name)`      | `string \| undefined`    | Read a Tcl global variable. `undefined` if unset. |
+| `globals.set(name, val)` | `void`                   | Write a Tcl global variable (value coerced via `String()`). |
+| `globals.has(name)`      | `boolean`                | True if the variable is defined. |
+| `globals.delete(name)`   | `void`                   | Unset; no-op if it doesn't exist. |
 
 ```js
 tcldide.runTcl('set ::greeting "hi"');
-await tcldide.globals.get('greeting');         // "hi"
-await tcldide.globals.set('count', 42);
-tcldide.runTcl('return $::count');             // "42"
+tcldide.globals.get('greeting');         // "hi"
+tcldide.globals.set('count', 42);
+tcldide.runTcl('return $::count');       // "42"
 ```
 
 ### `tcldide.canvas`
@@ -187,8 +187,8 @@ try {
 | `loadPyodide(config)`                | `loadTcldide(config)`          |
 | `pyodide.runPython(code)`            | `tcldide.runTcl(code)`           |
 | `pyodide.runPythonAsync(code)`       | `tcldide.runTclAsync(code)`      |
-| `pyodide.globals.get(n)`             | `await tcldide.globals.get(n)`   |
-| `pyodide.globals.set(n, v)`          | `await tcldide.globals.set(n, v)`|
+| `pyodide.globals.get(n)`             | `tcldide.globals.get(n)`          |
+| `pyodide.globals.set(n, v)`          | `tcldide.globals.set(n, v)`      |
 | `pyodide.canvas.getCanvas2D()`       | `tcldide.canvas.getCanvas2D()`   |
 | `pyodide.canvas.setCanvas2D(c)`      | `loadTcldide({ canvas: c })`   |
 | `pyodide.setStdout({ batched })`     | `tcldide.setStdout({ batched })` |

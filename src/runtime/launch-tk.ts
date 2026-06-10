@@ -27,8 +27,8 @@ export interface LaunchConfig {
 export interface RuntimeBindings {
   c_eval(code: string): Promise<number>;
   c_result(): Promise<string>;
-  c_get_var(name: string): Promise<string | null>;
-  c_set_var(name: string, value: string): Promise<string | null>;
+  c_get_var(name: string): string | null;
+  c_set_var(name: string, value: string): string | null;
 }
 
 export interface LaunchResult {
@@ -87,20 +87,18 @@ export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResul
   const bindings: RuntimeBindings = {
     c_eval:    cwrap('tcldide_eval',    'number', ['string'],             { async: true }) as RuntimeBindings['c_eval'],
     c_result:  cwrap('tcldide_result',  'string', []),
-    c_get_var: cwrap('tcldide_get_var', 'string', ['string'],             { async: true }) as RuntimeBindings['c_get_var'],
-    c_set_var: cwrap('tcldide_set_var', 'string', ['string', 'string'],   { async: true }) as RuntimeBindings['c_set_var'],
+    c_get_var: cwrap('tcldide_get_var', 'string', ['string'],             { async: false }) as RuntimeBindings['c_get_var'],
+    c_set_var: cwrap('tcldide_set_var', 'string', ['string', 'string'],   { async: false }) as RuntimeBindings['c_set_var'],
   };
 
-  const [tclVersion, tkVersion] = await Promise.all([
-    bindings.c_get_var('tcl_version'),
-    bindings.c_get_var('tk_version'),
-  ]);
+  const tclVersion = bindings.c_get_var('tcl_version') ?? '';
+  const tkVersion  = bindings.c_get_var('tk_version')  ?? '';
 
   return {
     em,
     module,
     bindings,
-    tclVersion: tclVersion ?? '',
-    tkVersion:  tkVersion ?? '',
+    tclVersion,
+    tkVersion,
   };
 }
