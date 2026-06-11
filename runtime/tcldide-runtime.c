@@ -190,29 +190,29 @@ const char *tcldide_set_var(const char *name, const char *value) {
  *
  * Rather than patching upstream Tk or breaking em-x11's X11 contract,
  * we intercept the keypress text at this tcldide-only seam: launch.ts
- * rebinds Module._emx11_set_pending_key_text to point at this wrapper,
+ * rebinds Module._em_x11_set_pending_key_text to point at this wrapper,
  * which converts the JS-staged UTF-8 to CESU-8 before forwarding to
- * the real `emx11_set_pending_key_text`. Other em-x11 wasm clients
+ * the real `em_x11_set_pending_key_text`. Other em-x11 wasm clients
  * (pyodide-tk via CPython, future Motif clients, etc.) keep the
  * unmodified UTF-8 path because their string model isn't CESU-8.
  *
  * The proper long-term fix is upgrading Tcl/Tk from 8.6 to 9.x, whose
  * internal Unicode IS real UTF-8 -- at that point this wrapper can
- * be deleted and launch.ts's _emx11_set_pending_key_text rebind
+ * be deleted and launch.ts's _em_x11_set_pending_key_text rebind
  * removed. Until then this is the load-bearing compatibility layer
  * between X11 UTF-8 and Tcl 8.6 CESU-8, NOT temporary scaffolding. */
 #ifdef WITH_TK
-extern void emx11_set_pending_key_text(const char *utf8);
+extern void em_x11_set_pending_key_text(const char *utf8);
 
 EMSCRIPTEN_KEEPALIVE
 void tcldide_push_key_text(const char *utf8) {
     if (!utf8 || !*utf8) {
-        emx11_set_pending_key_text(utf8);
+        em_x11_set_pending_key_text(utf8);
         return;
     }
     Tcl_DString ds;
     const char *cesu = to_cesu8(utf8, &ds);
-    emx11_set_pending_key_text(cesu);
+    em_x11_set_pending_key_text(cesu);
     Tcl_DStringFree(&ds);
 }
 #endif
@@ -226,7 +226,7 @@ void tcldide_push_key_text(const char *utf8) {
  * When poll() is blocked in emscripten_sleep (inner event loop in
  * tkwait/vwait), this tick must NOT process events — the inner loop
  * is waiting for specific events and would miss them if we consume
- * them here. emx11_is_blocking_in_poll gates this tick.
+ * them here. em_x11_is_blocking_in_poll gates this tick.
  *
  * Tcl uses its default Unix notifier (tclUnixNotfy.c) which calls
  * select() on the X11 display fd. Our poll.c override handles
@@ -234,11 +234,11 @@ void tcldide_push_key_text(const char *utf8) {
  * tick is lightweight — it only processes events that are already
  * queued. */
 #ifdef WITH_TK
-extern int emx11_is_blocking_in_poll(void);
+extern int em_x11_is_blocking_in_poll(void);
 
 void tick(void) {
     if (!g_interp) return;
-    if (emx11_is_blocking_in_poll()) return;
+    if (em_x11_is_blocking_in_poll()) return;
     for (int i = 0; i < 256; i++) {
         if (!Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT)) break;
     }

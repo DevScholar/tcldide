@@ -49,10 +49,10 @@ fi
 # ---------------------------------------------------------------------------
 # Detect em-x11 (user's responsibility — we only check, never fetch)
 # ---------------------------------------------------------------------------
-EMX11_DIR="${EMX11_DIR:-$(cd "$(dirname "$0")" && pwd)/../em-x11}"
+EM_X11_DIR="${EM_X11_DIR:-$(cd "$(dirname "$0")" && pwd)/../em-x11}"
 
-if [ ! -d "$EMX11_DIR/native/include/X11" ]; then
-    echo "ERROR: em-x11 headers not found at $EMX11_DIR/native/include/X11"
+if [ ! -d "$EM_X11_DIR/native/include/X11" ]; then
+    echo "ERROR: em-x11 headers not found at $EM_X11_DIR/native/include/X11"
     echo ""
     echo "  em-x11 must be cloned as a sibling directory and built first:"
     echo "    cd $(dirname "$0")/../em-x11"
@@ -63,13 +63,13 @@ if [ ! -d "$EMX11_DIR/native/include/X11" ]; then
     exit 1
 fi
 
-if [ ! -f "$EMX11_DIR/build/artifacts/libX11.a" ]; then
+if [ ! -f "$EM_X11_DIR/build/artifacts/libX11.a" ]; then
     echo "ERROR: em-x11 not built (headers exist but archives missing)."
     echo "  Run: cd ../em-x11 && pnpm build:native"
     exit 1
 fi
 
-echo "em-x11 detected at $EMX11_DIR — OK"
+echo "em-x11 detected at $EM_X11_DIR — OK"
 
 # ---------------------------------------------------------------------------
 # Tcl source tree

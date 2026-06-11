@@ -16,10 +16,10 @@ set(TK_ARCHIVE  "${TCLDIDE_DIR}/lib/libtk8.6.a")
 set(TCL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/ignored-area/third-party/tcl/library")
 set(TK_LIBRARY_DIR  "${CMAKE_SOURCE_DIR}/ignored-area/third-party/tk/library")
 
-set(EMX11_DIR        "${CMAKE_SOURCE_DIR}/../em-x11")
-set(EMX11_BUILD_DIR  "${EMX11_DIR}/build")
-set(EMX11_LIB_DIR    "${EMX11_BUILD_DIR}/artifacts")
-set(_port_script     "${EMX11_DIR}/tools/ports/emx11.py")
+set(EM_X11_DIR        "${CMAKE_SOURCE_DIR}/../em-x11")
+set(EM_X11_BUILD_DIR  "${EM_X11_DIR}/build")
+set(EM_X11_LIB_DIR    "${EM_X11_BUILD_DIR}/artifacts")
+set(_port_script     "${EM_X11_DIR}/tools/ports/em_x11.py")
 
 # ---- prereq guard (shared) ------------------------------------------------
 
@@ -88,35 +88,35 @@ if(NOT EXISTS "${TK_LIBRARY_DIR}/tk.tcl")
     message(STATUS "tcldide-runtime-tk: skipping — Tk script library missing.")
     return()
 endif()
-if(NOT EXISTS "${EMX11_BUILD_DIR}/CMakeCache.txt")
-    message(STATUS "tcldide-runtime-tk: skipping — em-x11 not configured at ${EMX11_BUILD_DIR}. Run `cd ../em-x11 && pnpm build:native` once to bootstrap.")
+if(NOT EXISTS "${EM_X11_BUILD_DIR}/CMakeCache.txt")
+    message(STATUS "tcldide-runtime-tk: skipping — em-x11 not configured at ${EM_X11_BUILD_DIR}. Run `cd ../em-x11 && pnpm build:native` once to bootstrap.")
     return()
 endif()
 
-file(GLOB_RECURSE EMX11_SRC CONFIGURE_DEPENDS
-    "${EMX11_DIR}/native/dix/*.c"
-    "${EMX11_DIR}/native/emx11/*.c"
-    "${EMX11_DIR}/native/emx11/*.h"
-    "${EMX11_DIR}/native/Xext/*.c"
-    "${EMX11_DIR}/native/render/*.c"
-    "${EMX11_DIR}/native/xkb/*.c"
-    "${EMX11_DIR}/native/glx/*.c"
-    "${EMX11_DIR}/native/include/*.h"
+file(GLOB_RECURSE EM_X11_SRC CONFIGURE_DEPENDS
+    "${EM_X11_DIR}/native/dix/*.c"
+    "${EM_X11_DIR}/native/em_x11/*.c"
+    "${EM_X11_DIR}/native/em_x11/*.h"
+    "${EM_X11_DIR}/native/Xext/*.c"
+    "${EM_X11_DIR}/native/render/*.c"
+    "${EM_X11_DIR}/native/xkb/*.c"
+    "${EM_X11_DIR}/native/glx/*.c"
+    "${EM_X11_DIR}/native/include/*.h"
 )
 add_custom_command(
-    OUTPUT "${EMX11_LIB_DIR}/libX11.a"
-    COMMAND ${CMAKE_COMMAND} --build "${EMX11_BUILD_DIR}"
-    DEPENDS ${EMX11_SRC}
-    COMMENT "Building em-x11 (port finds archives in ${EMX11_LIB_DIR})"
+    OUTPUT "${EM_X11_LIB_DIR}/libX11.a"
+    COMMAND ${CMAKE_COMMAND} --build "${EM_X11_BUILD_DIR}"
+    DEPENDS ${EM_X11_SRC}
+    COMMENT "Building em-x11 (port finds archives in ${EM_X11_LIB_DIR})"
     VERBATIM
 )
-add_custom_target(emx11_static_build DEPENDS "${EMX11_LIB_DIR}/libX11.a")
+add_custom_target(em_x11_static_build DEPENDS "${EM_X11_LIB_DIR}/libX11.a")
 
 add_executable(tcldide-runtime-tk
     tcldide-runtime.c
     "${CMAKE_SOURCE_DIR}/opt/tcldide.c"
 )
-add_dependencies(tcldide-runtime-tk emx11_static_build)
+add_dependencies(tcldide-runtime-tk em_x11_static_build)
 
 target_compile_definitions(tcldide-runtime-tk PRIVATE
     WITH_TK
@@ -125,7 +125,7 @@ target_compile_definitions(tcldide-runtime-tk PRIVATE
 target_include_directories(tcldide-runtime-tk PRIVATE
     "${TCLDIDE_DIR}/include"
     "${TCLDIDE_DIR}/include/tk"
-    "${EMX11_DIR}/native/include"
+    "${EM_X11_DIR}/native/include"
 )
 
 target_link_libraries(tcldide-runtime-tk PRIVATE
@@ -148,7 +148,7 @@ target_link_options(tcldide-runtime-tk PRIVATE
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s FORCE_FILESYSTEM=1"
     "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','FS','stringToUTF8','lengthBytesUTF8']"
-    "SHELL:-s EXPORTED_FUNCTIONS=['_main','_tick','_tcldide_eval','_tcldide_result','_tcldide_get_var','_tcldide_set_var','_tcldide_push_key_text','_emx11_push_button_event','_emx11_push_motion_event','_emx11_push_key_event','_emx11_push_key_event_kc','_emx11_install_keysym','_emx11_push_expose_event','_emx11_push_map_request','_emx11_push_reparent_notify','_malloc','_free']"
+    "SHELL:-s EXPORTED_FUNCTIONS=['_main','_tick','_tcldide_eval','_tcldide_result','_tcldide_get_var','_tcldide_set_var','_tcldide_push_key_text','_em_x11_push_button_event','_em_x11_push_motion_event','_em_x11_push_key_event','_em_x11_push_key_event_kc','_em_x11_install_keysym','_em_x11_push_expose_event','_em_x11_push_map_request','_em_x11_push_reparent_notify','_malloc','_free']"
     "SHELL:-s JSPI_EXPORTS='tick,main,__main_argc_argv,tcldide_eval'"
     "SHELL:-Wl,--error-limit=0"
     "SHELL:--profiling-funcs"

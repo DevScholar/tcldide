@@ -1,7 +1,7 @@
 /*
  * poll.c — minimal poll/select override for JSPI-based Tcl-only runtimes.
  *
- * Extracted from em-x11/native/emx11/poll.c with all Display-fd handling,
+ * Extracted from em-x11/native/em_x11/poll.c with all Display-fd handling,
  * pushback buffer, __wrap_read, and signal delivery removed. This file has
  * zero em-x11 dependencies — it only needs emscripten.h for
  * emscripten_sleep().

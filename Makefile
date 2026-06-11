@@ -4,7 +4,7 @@
 # autoconf/configure under emconfigure, and produce libtcl8.6.a / libtk8.6.a
 # under jsbuild/lib. The actual wasm runtime is built by `pnpm build:native`
 # (cmake -> runtime/CMakeLists.txt), which links those archives plus
-# libemx11.a.
+# libem_x11.a.
 #
 # Live targets (per setup.sh):
 #   tcldideprep    download Tcl source (no source patch)
@@ -23,9 +23,9 @@ EMSCRIPTEN?=$(HOME)/.local/lib/emsdk/upstream/emscripten
 
 # em-x11 Xlib replacement: Tk is compiled against em-x11's X11/*.h. The
 # header dir must contain an X11/ subtree (matching Xlib's expected layout).
-EMX11_DIR?=$(CURDIR)/../em-x11
-EMX11_INCLUDES=$(EMX11_DIR)/native/include
-EMX11_LIBDIR=$(EMX11_DIR)/build/artifacts
+EM_X11_DIR?=$(CURDIR)/../em-x11
+EM_X11_INCLUDES=$(EM_X11_DIR)/native/include
+EM_X11_LIBDIR=$(EM_X11_DIR)/build/artifacts
 
 # Optimisation injected into the Tcl/Tk Makefiles after configure runs.
 BCFLAGS?=-Oz -s WASM=1
@@ -84,9 +84,9 @@ tcldideinstall:
 # Stock Tk 8.6 against em-x11's Xlib. Tk's internal xlib/*.c is only used
 # for Aqua builds (see unix/Makefile.in AQUA_OBJS), so --with-x keeps it
 # out of the compile -- all X symbols stay unresolved in libtk.a and get
-# filled by libemx11.a at runtime link time. Prerequisites: tcldideinstall
+# filled by libem_x11.a at runtime link time. Prerequisites: tcldideinstall
 # must have produced $(INSTALLDIR)/lib/libtcl8.6.a first, and em-x11
-# must have been built (EMX11_LIBDIR exists) at least for the header tree.
+# must have been built (EM_X11_LIBDIR exists) at least for the header tree.
 
 tkprep:
 	mkdir -p ignored-area/tarballs ignored-area/third-party/tk
@@ -95,15 +95,15 @@ tkprep:
 	cd ignored-area/third-party/tk/unix && autoconf
 
 tkconfig:
-	@test -d "$(EMX11_INCLUDES)/X11" || \
-		(echo "em-x11 headers not found at $(EMX11_INCLUDES)/X11"; exit 1)
+	@test -d "$(EM_X11_INCLUDES)/X11" || \
+		(echo "em-x11 headers not found at $(EM_X11_INCLUDES)/X11"; exit 1)
 	chmod +x scripts/xft-config 2>/dev/null || true
 	cd ignored-area/third-party/tk/unix && \
 		PATH="$(CURDIR)/scripts:$$PATH" \
-		EMX11_INCLUDES="$(EMX11_INCLUDES)" \
-		EMX11_LIBDIR="$(EMX11_LIBDIR)" \
-		XFT_CFLAGS="-I$(EMX11_INCLUDES)" \
-		XFT_LIBS="-L$(EMX11_LIBDIR) -lemx11" \
+		EM_X11_INCLUDES="$(EM_X11_INCLUDES)" \
+		EM_X11_LIBDIR="$(EM_X11_LIBDIR)" \
+		XFT_CFLAGS="-I$(EM_X11_INCLUDES)" \
+		XFT_LIBS="-L$(EM_X11_LIBDIR) -lem_x11" \
 		ac_cv_lib_Xft_XftFontOpen=yes \
 		ac_cv_lib_fontconfig_FcFontSort=no \
 		ac_cv_lib_X11_XkbKeycodeToKeysym=yes \
@@ -111,22 +111,22 @@ tkconfig:
 		emconfigure ./configure --prefix=$(CURDIR)/$(INSTALLDIR) \
 		--host=wasm32-unknown-emscripten \
 		--with-tcl=$(CURDIR)/$(INSTALLDIR)/lib \
-		--x-includes=$(EMX11_INCLUDES) \
-		--x-libraries=$(EMX11_LIBDIR) \
+		--x-includes=$(EM_X11_INCLUDES) \
+		--x-libraries=$(EM_X11_LIBDIR) \
 		--disable-shared --disable-load --disable-threads
 	# Strip optimisation flags the configure injects (same hack as Tcl's
 	# config target) and make sure em-x11 headers win over anything the
 	# configure probe stuck into X11_INCLUDES.
 	cd ignored-area/third-party/tk/unix && sed -i 's/-O2//g' Makefile
 	cd ignored-area/third-party/tk/unix && sed -i 's|^\(CFLAGS[[:space:]].*\)|\1 $(BCFLAGS) -DTK_USE_INPUT_METHODS=1|g' Makefile
-	cd ignored-area/third-party/tk/unix && sed -i 's|^X11_INCLUDES[[:space:]]*=.*|X11_INCLUDES = -I$(EMX11_INCLUDES)|' Makefile
+	cd ignored-area/third-party/tk/unix && sed -i 's|^X11_INCLUDES[[:space:]]*=.*|X11_INCLUDES = -I$(EM_X11_INCLUDES)|' Makefile
 
 libtk: tkconfig
 	cd ignored-area/third-party/tk/unix && emmake make -j libtk8.6.a libtkstub8.6.a
 
 # Install just the pieces the cmake runtime needs: the static archives
 # and the header tree. Skip Tk's install-binaries because it transitively
-# builds wish, which wants libemx11 at link time -- wish only makes sense
+# builds wish, which wants libem_x11 at link time -- wish only makes sense
 # in a page with a Canvas attached, so we build that at the demo layer.
 tkinstall: libtk
 	mkdir -p $(INSTALLDIR)/lib $(INSTALLDIR)/include/tk

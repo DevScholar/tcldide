@@ -69,7 +69,7 @@ export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResul
   const module = await proc.module;
 
   /* NOT an XIM bypass -- this hook sits ON the standard XIM ingress
-   * path. emx11_set_pending_key_text -> Xutf8LookupString is the
+   * path. em_x11_set_pending_key_text -> Xutf8LookupString is the
    * real protocol path; we only insert a UTF-8 -> CESU-8 transcode
    * in front of it because Tcl 8.6 (TCL_UTF_MAX=3) stores text as
    * CESU-8 surrogate pairs, and stock Tk's tkUnixKey.c TkpGetString
@@ -80,7 +80,7 @@ export async function launchRuntimeTk(config: LaunchConfig): Promise<LaunchResul
    * The compatibility layer goes away when we move to Tcl/Tk 9.x. */
   const m = module as unknown as Record<string, unknown>;
   if (typeof m._tcldide_push_key_text === 'function') {
-    m._emx11_set_pending_key_text = m._tcldide_push_key_text;
+    m._em_x11_set_pending_key_text = m._tcldide_push_key_text;
   }
 
   const cwrap = (module as EmscriptenModule & CwrapModule).cwrap;

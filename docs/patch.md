@@ -101,10 +101,10 @@ No `patch` step.
 ### Configure
 ```
 PATH="$(CURDIR)/scripts:$$PATH" \
-EMX11_INCLUDES="../em-x11/native/include" \
-EMX11_LIBDIR="../em-x11/build/artifacts" \
-XFT_CFLAGS="-I$(EMX11_INCLUDES)" \
-XFT_LIBS="-L$(EMX11_LIBDIR) -lemx11" \
+EM_X11_INCLUDES="../em-x11/native/include" \
+EM_X11_LIBDIR="../em-x11/build/artifacts" \
+XFT_CFLAGS="-I$(EM_X11_INCLUDES)" \
+XFT_LIBS="-L$(EM_X11_LIBDIR) -lemX11" \
 ac_cv_lib_Xft_XftFontOpen=yes \
 ac_cv_lib_fontconfig_FcFontSort=no \
 ac_cv_lib_X11_XkbKeycodeToKeysym=yes \
@@ -112,8 +112,8 @@ cross_compiling=yes \
 emconfigure ./configure --prefix=$(CURDIR)/jsbuild \
     --host=wasm32-unknown-emscripten \
     --with-tcl=$(CURDIR)/jsbuild/lib \
-    --x-includes=$(EMX11_INCLUDES) \
-    --x-libraries=$(EMX11_LIBDIR) \
+    --x-includes=$(EM_X11_INCLUDES) \
+    --x-libraries=$(EM_X11_LIBDIR) \
     --disable-shared --disable-load --disable-threads
 ```
 
@@ -123,7 +123,7 @@ Tk's unresolved X11 symbols stay in the static archive and are
 filled at the runtime link step by em-x11's split archives —
 `libX11.a`, `libXext.a`, `libXrender.a`, `libfontconfig.a`,
 `libXft.a` (the emscripten-ports script at
-`tools/ports/emx11.py` returns the full archive list; GLX is
+`tools/ports/em_x11.py` returns the full archive list; GLX is
 not used by Tk).
 
 - `ac_cv_lib_Xft_XftFontOpen=yes` and
@@ -139,7 +139,7 @@ not used by Tk).
 
 Post-configure sed:
 - strip `-O2` (replaced with `-Oz` from `BCFLAGS`).
-- force `X11_INCLUDES = -I$(EMX11_INCLUDES)` so em-x11's headers
+- force `X11_INCLUDES = -I$(EM_X11_INCLUDES)` so em-x11's headers
   win over anything the X probe inserted.
 - append `-DTK_USE_INPUT_METHODS=1` to `CFLAGS` so Tk's XIM input
   method path is compiled in.

@@ -5,19 +5,19 @@
 # (with pkg-config as a fallback). Real xft-config is part of libXft's
 # upstream install, which we don't ship; this stub feeds the probe the
 # em-x11 paths so configure picks up our X11/Xft/Xft.h, fontconfig.h,
-# and the libemx11 archive that hosts every Xft / Fc symbol.
+# and the libemX11 archive that hosts every Xft / Fc symbol.
 #
-# EMX11_INCLUDES / EMX11_LIBDIR are exported by tcldide's Makefile before
+# EM_X11_INCLUDES / EM_X11_LIBDIR are exported by tcldide's Makefile before
 # this script is invoked.
 
 set -e
 
 case "$1" in
     --cflags)
-        printf -- '-I%s\n' "${EMX11_INCLUDES:?EMX11_INCLUDES not set}"
+        printf -- '-I%s\n' "${EM_X11_INCLUDES:?EM_X11_INCLUDES not set}"
         ;;
     --libs)
-        printf -- '-L%s -lemx11\n' "${EMX11_LIBDIR:?EMX11_LIBDIR not set}"
+        printf -- '-L%s -lemX11\n' "${EM_X11_LIBDIR:?EM_X11_LIBDIR not set}"
         ;;
     --version)
         echo "2.3.13"
