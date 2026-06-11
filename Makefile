@@ -113,6 +113,7 @@ tkconfig:
 		--with-tcl=$(CURDIR)/$(INSTALLDIR)/lib \
 		--x-includes=$(EM_X11_INCLUDES) \
 		--x-libraries=$(EM_X11_LIBDIR) \
+		--enable-xft \
 		--disable-shared --disable-load --disable-threads
 	# Strip optimisation flags the configure injects (same hack as Tcl's
 	# config target) and make sure em-x11 headers win over anything the

@@ -12,3 +12,4 @@ tcldide.wasm
 /node_modules/
 /build/
 /dist/
+/tcl
