@@ -43,6 +43,12 @@ pnpm build:native
 pnpm dev
 ```
 
+# Known Issues
+
+These are known issues that remain unresolved despite repeated attempts.
+
+- In EmX11, running both TWM and Tcldide simultaneously causes the web page to freeze.
+
 # Documentation
 
 [docs/api.md](docs/api.md)
